@@ -1,0 +1,46 @@
+includes:
+	- ./services.php
+parameters:
+	tournament:
+	routing:
+		routeFiles:
+			- %tournament.root%config/routes.php
+services:
+	tournament.module:
+		type: LAC\Modules\Tournament\Tournament
+		tags:
+			- modules
+	tournament.gameData:
+		type: LAC\Modules\Tournament\Services\GameDataExtension
+		tags:
+			- gameDataExtension
+	tournament.teamData:
+		type: LAC\Modules\Tournament\Services\TeamDataExtension
+		tags:
+			- teamDataExtension
+	tournament.playerData:
+		type: LAC\Modules\Tournament\Services\PlayerDataExtension
+		tags:
+			- playerDataExtension
+	tournament.resultParser:
+		type: LAC\Modules\Tournament\Services\ResultParserExtension
+		tags:
+			- resultParserExtension
+	tournament.menuExtension:
+		type: LAC\Modules\Tournament\Services\MenuExtension
+		tags:
+			- menuExtension
+	tournament.ligaExtension:
+		type: LAC\Modules\Tournament\Services\LigaApiExtension
+		tags:
+			- ligaApiExtension
+	tournamentProvider: LAC\Modules\Tournament\Services\TournamentProvider
+search:
+	tournament.controllers:
+		in: %tournament.root%src/Controllers
+		extends:
+			- Lsr\Core\Controller
+			- Lsr\Core\ApiController
+			- Lsr\Core\CliController
+		tags:
+			- controllers
