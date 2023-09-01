@@ -31,6 +31,8 @@ class GameDataExtension implements GameDataExtensionInterface
 	 * @inheritDoc
 	 */
 	public function addJsonData(array &$data, Game|Team|Player $game): void {
+		$data['tournamentGame'] = $game->tournamentGame?->id;
+		$data['tournament'] = $game->tournamentGame?->tournament->id;
 	}
 
 	public function save(Game|Team|Player $game): bool {
