@@ -24,7 +24,7 @@
 		<div class="tournament-games-content-wrapper">
 			<table class="table table-striped tournament-games-content">
 				<tbody>
-				<tr n:foreach="$games as $gameTournament">
+				<tr n:foreach="$games as $gameTournament" n:class="$gameTournament->hasScores() ? finished">
 					{var string[] $scores = []}
 					<td class="col-3">{$gameTournament->start->format('H:i')}</td>
 					<td class="col-3" n:foreach="$gameTournament->teams as $team">

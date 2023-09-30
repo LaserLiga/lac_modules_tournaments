@@ -3,10 +3,10 @@
 {varType LAC\Modules\Tournament\Models\Tournament[] $tournaments}
 
 {block content}
-	<h2>{lang 'Plánované turnaje'}</h2>
+	<h2>{lang 'Odehrané turnaje'}</h2>
 	<p>
 		<a href="{link 'tournament', 'sync'}" class="btn btn-primary">{lang 'Synchronizovat'}</a>
-		<a href="{link 'tournament', 'old'}" class="btn btn-info">{lang 'Odehrané turnaje'}</a>
+		<a href="{link 'tournament'}" class="btn btn-info">{lang 'Plánované turnaje'}</a>
 	</p>
 	<div class="list-group">
 		<a n:foreach="$tournaments as $tournament" href="{link 'tournament', $tournament->id}"

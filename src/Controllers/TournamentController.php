@@ -44,6 +44,13 @@ class TournamentController extends Controller
 		$this->view('../modules/Tournament/templates/index');
 	}
 
+	public function oldTournaments(): void {
+		$this->params['tournaments'] = Tournament::query()->where('[active] = 1 AND DATE([start]) < CURDATE()')->orderBy(
+			'start'
+		)->desc()->get();
+		$this->view('../modules/Tournament/templates/old');
+	}
+
 	public function show(Tournament $tournament): void {
 		$this->params['tournament'] = $tournament;
 		$this->view('../modules/Tournament/templates/show');
@@ -68,8 +75,9 @@ class TournamentController extends Controller
 		$tournament->gameLength = (int)$request->getPost('game-length', 15);
 		$tournament->gamePause = (int)$request->getPost('game-pause', 5);
 		$tournamentStart = (int)$request->getPost('tournament-start', 30);
+		$iterations = (int)$request->getPost('game-repeat', 1);
 
-		$tournamentRozlos = $this->tournamentProvider->createTournamentFromPreset($type, $tournament);
+		$tournamentRozlos = $this->tournamentProvider->createTournamentFromPreset($type, $tournament, $iterations);
 
 		$this->tournamentProvider->reset($tournament);
 

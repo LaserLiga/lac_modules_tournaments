@@ -45,6 +45,7 @@ class TournamentProvider
 			/** @var array{id:int,name:string,image:string|null,description:string|null}[] $leagues */
 			$leagues = json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
 			$this->logger->debug('Got ' . count($leagues) . ' leagues');
+			bdump($leagues);
 			foreach ($leagues as $league) {
 				$leagueLocal = League::getByPublicId($league['id']);
 				if (!isset($leagueLocal)) {
@@ -278,11 +279,13 @@ class TournamentProvider
 
 	/**
 	 * @param TournamentPresetType $type
-	 * @param Tournament $tournament
+	 * @param Tournament           $tournament
+	 * @param int                  $iterations
+	 *
 	 * @return TournamentGenerator
 	 * @throws ValidationException
 	 */
-	public function createTournamentFromPreset(TournamentPresetType $type, Tournament $tournament): TournamentGenerator {
+	public function createTournamentFromPreset(TournamentPresetType $type, Tournament $tournament, int $iterations = 1): TournamentGenerator {
 		$tournamentRozlos = new TournamentGenerator();
 		foreach ($tournament->getTeams() as $team) {
 			$tournamentRozlos->team($team->name, $team->id);
@@ -326,6 +329,8 @@ class TournamentProvider
 				$tournamentRozlos->splitTeams($round1);
 				break;
 		}
+
+		$tournamentRozlos->setIterationCount($iterations);
 
 		$tournamentRozlos->genGamesSimulate();
 

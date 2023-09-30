@@ -7,6 +7,7 @@ window.addEventListener('load', () => {
 	const teamCount = parseInt(form.dataset.teams);
 
 	const tournamentType = document.getElementById('tournament-type') as HTMLSelectElement;
+	const gameRepeat = document.getElementById('game-repeat') as HTMLInputElement;
 	const gameLength = document.getElementById('game-length') as HTMLInputElement;
 	const gamePause = document.getElementById('game-pause') as HTMLInputElement;
 
@@ -18,6 +19,7 @@ window.addEventListener('load', () => {
 	recalculate();
 
 	tournamentType.addEventListener('change', recalculate);
+	gameRepeat.addEventListener('change', recalculate);
 	gameLength.addEventListener('input', recalculate);
 	gamePause.addEventListener('input', recalculate);
 
@@ -37,6 +39,9 @@ window.addEventListener('load', () => {
 				break;
 		}
 
+		const repeat = gameRepeat.valueAsNumber;
+		games *= repeat;
+		gamesPerTeam *= repeat;
 		const length = (games * parseInt(gameLength.value)) + ((games - 1) * parseInt(gamePause.value));
 		const teamLength = gamesPerTeam * parseInt(gameLength.value);
 

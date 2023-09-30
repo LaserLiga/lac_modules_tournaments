@@ -7,6 +7,7 @@ use Lsr\Core\Routing\Route;
 
 Route::group('tournament')
 	->get('', [TournamentController::class, 'index'])->name('tournaments')
+                                                   ->get('old', [TournamentController::class, 'oldTournaments'])
 	->get('sync', [TournamentController::class, 'sync'])
 	->get('{id}', [TournamentController::class, 'show'])
 	->get('{id}/rozlos', [TournamentController::class, 'rozlos'])->name('tournament-rozlos')

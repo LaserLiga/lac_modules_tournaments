@@ -37,6 +37,10 @@ class Game extends Model
 	private ?Game $nextGame = null;
 	private ?Game $prevGame = null;
 
+	public function hasScores(): bool {
+		return $this->getGame() !== null;
+	}
+
 	public function save(): bool {
 		$success = parent::save();
 		foreach ($this->teams as $team) {
