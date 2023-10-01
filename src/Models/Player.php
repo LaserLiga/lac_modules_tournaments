@@ -6,6 +6,7 @@ use App\Models\Auth\Player as LigaPlayer;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Lsr\Core\App;
+use Lsr\Core\DB;
 use Lsr\Core\Models\Attributes\ManyToOne;
 use Lsr\Core\Models\Attributes\PrimaryKey;
 use Lsr\Core\Models\Attributes\Validation\Email;
@@ -18,7 +19,7 @@ class Player extends Model
 
 	public const TABLE = 'tournament_players';
 
-	public string $nickname;
+	public string  $nickname;
 	public ?string $name = null;
 	public ?string $surname = null;
 
@@ -26,22 +27,25 @@ class Player extends Model
 
 	public ?string $image = null;
 
-	public bool $captain = false;
-	public bool $sub = false;
+	public bool    $captain   = false;
+	public bool    $sub       = false;
 	#[Email]
-	public ?string $email = null;
-	public ?string $phone = null;
-	public ?int $birthYear = null;
+	public ?string $email     = null;
+	public ?string $phone     = null;
+	public ?int    $birthYear = null;
 
 	#[ManyToOne]
 	public Tournament $tournament;
 	#[ManyToOne]
-	public ?Team $team = null;
+	public ?Team      $team = null;
 	#[ManyToOne]
 	public ?LigaPlayer $user = null;
 
 	public DateTimeInterface $createdAt;
 	public ?DateTimeInterface $updatedAt = null;
+
+	/** @var int[] */
+	private array $vests;
 
 	public function insert(): bool {
 		if (!isset($this->createdAt)) {
@@ -63,6 +67,16 @@ class Player extends Model
 			return null;
 		}
 		return App::getUrl() . $this->image;
+	}
+
+	public function getVests(): array {
+		if (!isset($this->vests)) {
+			$this->vests = DB::select(\App\GameModels\Game\Evo5\Player::TABLE, '[vest], COUNT(*) as [count]')
+			                 ->where('id_tournament_player = %i', $this->id)
+			                 ->groupBy('vest')
+			                 ->fetchPairs('vest', 'count');
+		}
+		return $this->vests;
 	}
 
 }

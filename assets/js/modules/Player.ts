@@ -5,6 +5,7 @@ export default class Player {
 	captain: boolean;
 	sub: boolean;
 	vestSelect: HTMLSelectElement;
+    vests: { [index: string]: number }
 
 	constructor(id: number, dom: HTMLDivElement) {
 		this.id = id;
@@ -12,6 +13,12 @@ export default class Player {
 		this.name = dom.innerText;
 		this.captain = dom.dataset.captain === '1';
 		this.sub = dom.dataset.sub === '1';
+        const vests: { [index: string]: number } | [] = JSON.parse(dom.dataset.vests);
+        if (vests instanceof Array) {
+            this.vests = {};
+        } else {
+            this.vests = vests;
+        }
 		this.vestSelect = dom.querySelector('.vest-select') as HTMLSelectElement;
 	}
 
