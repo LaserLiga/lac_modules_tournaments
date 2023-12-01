@@ -36,14 +36,16 @@ class Tournament extends Model
 
 	public ?string $image = null;
 	public GameModeType $format = GameModeType::TEAM;
-	public int $teamSize = 1;
-	public int $subCount = 0;
+
+	public int $teamsInGame = 2;
+	public int $teamSize    = 1;
+	public int $subCount    = 0;
 
 	#[Instantiate]
 	public TournamentPoints $points;
 
 	public int $gameLength = 15;
-	public int $gamePause = 5;
+	public int $gamePause   = 5;
 
 	public bool $active = true;
 
@@ -75,7 +77,12 @@ class Tournament extends Model
 			return [];
 		}
 		if (empty($this->teams)) {
-			$this->teams = Team::query()->where('id_tournament = %i', $this->id)->get();
+			$this->teams = Team::query()->where('id_tournament = %i', $this->id)
+			                   ->cacheTags(
+				                   'tournament-teams',
+				                   'tournament-' . $this->id . '-teams'
+			                   )
+			                   ->get();
 		}
 		return $this->teams;
 	}
@@ -89,7 +96,13 @@ class Tournament extends Model
 			return [];
 		}
 		if (empty($this->players)) {
-			$this->players = Player::query()->where('id_tournament = %i', $this->id)->get();
+			$this->players = Player::query()
+			                       ->where('id_tournament = %i', $this->id)
+			                       ->cacheTags(
+				                       'tournament-players',
+				                       'tournament-' . $this->id . '-players'
+			                       )
+			                       ->get();
 		}
 		return $this->players;
 	}

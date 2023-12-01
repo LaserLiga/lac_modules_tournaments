@@ -1,0 +1,65 @@
+{layout '../../../templates/@layout.latte'}
+
+{default array $values = []}
+{default string[] $errors = []}
+
+{block content}
+    <p><a href="{link 'tournament'}" class="btn btn-warning">{lang 'Zpět'}</a></p>
+    <form action="" method="post" id="create-tournament">
+        <h2>{lang 'Nový turnaj'}</h2>
+
+        <div class="form-group mb-3">
+            <label for="name" class="form-label">{lang 'Název turnaje'}:</label>
+            <input type="text" maxlength="100" required name="name" placeholder="{lang 'Turnaj XYZ'}"
+                    n:class="form-control, isset($errors['name']) ? 'is-invalid'" id="name"
+                   value="{$values['name'] ?? ''}">
+            <div n:ifset="$errors['name']" class="invalid-feedback">
+                {$errors['name']}
+            </div>
+        </div>
+        <div class="form-group mb-3">
+            <label for="format" class="form-label">{lang 'Formát'}:</label>
+            <div class="form-check">
+                <input type="radio" class="form-check-input" name="format" value="TEAM"
+                       id="format-team" n:attr="checked: ($values['format'] ?? 'TEAM') === 'TEAM'">
+                <label for="format-team" class="form-check-label">{lang 'Týmový'}</label>
+            </div>
+            <div class="form-check">
+                <input type="radio" class="form-check-input" name="format" value="SOLO"
+                       id="format-solo" n:attr="checked: ($values['format'] ?? 'TEAM') === 'SOLO'">
+                <label for="format-solo" class="form-check-label">{lang 'Sólo'}</label>
+            </div>
+        </div>
+        <div class="form-group mb-3">
+            <label for="start" class="form-label">{lang 'Začátek turnaje'}:</label>
+            <input type="text"
+                   name="start" n:class="form-control, datetime-picker, isset($errors['start']) ? 'is-invalid'"
+                   id="start" value="{$values['start'] ?? date('d.m.Y H:i')}">
+            <div n:ifset="$errors['start']" class="invalid-feedback">
+                {$errors['start']}
+            </div>
+        </div>
+        <div class="form-group mb-3 team-only">
+            <label for="team_size" class="form-label">{lang 'Velikost týmu'}:</label>
+            <input type="number" min="1" name="team_size" n:class="form-control, isset($errors['name']) ? 'is-invalid'"
+                   id="team_size" value="{$values['team_size'] ?? '5'}">
+            <div n:ifset="$errors['team_size']" class="invalid-feedback">
+                {$errors['team_size']}
+            </div>
+        </div>
+        <div class="form-group mb-3 team-only">
+            <label for="teams_in_game" class="form-label">{lang 'Týmů ve hře'}:</label>
+            <select name="teams_in_game"
+                    id="teams_in_game" n:class="form-select, isset($errors['teams_in_game']) ? 'is-invalid'">
+                <option value="2" n:attr="selected: ((int)($values['teams_in_game'] ?? 2)) === 2">2</option>
+                <option value="3" n:attr="selected: ((int)($values['teams_in_game'] ?? 2)) === 3">3</option>
+                <option value="4" n:attr="selected: ((int)($values['teams_in_game'] ?? 2)) === 4">4</option>
+            </select>
+            <div n:ifset="$errors['teams_in_game']" class="invalid-feedback">
+                {$errors['teams_in_game']}
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success">{lang 'Odeslat'}</button>
+    </form>
+{/block}

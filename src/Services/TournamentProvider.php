@@ -295,7 +295,8 @@ class TournamentProvider
 
 		switch ($type) {
 			case TournamentPresetType::ROUND_ROBIN:
-				$tournamentRozlos->round()->group('A');
+				$group = $tournamentRozlos->round()->group('A');
+				$group->setInGame($tournament->teamsInGame);
 				$tournamentRozlos->splitTeams();
 				break;
 			case TournamentPresetType::TWO_GROUPS_ROBIN:

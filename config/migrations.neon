@@ -36,6 +36,7 @@ tables:
           `format` enum('TEAM','SOLO') NOT NULL DEFAULT 'TEAM',
           `start` datetime NOT NULL,
           `end` datetime DEFAULT NULL,
+          `teams_in_game` tinyint(1) unsigned NOT NULL DEFAULT 2,
           `team_size` int(10) unsigned NOT NULL DEFAULT '1',
           `sub_count` int(10) unsigned NOT NULL DEFAULT '0',
           `active` tinyint(1) NOT NULL DEFAULT '1',
@@ -51,6 +52,9 @@ tables:
           CONSTRAINT `tournaments_ibfk_2` FOREIGN KEY (`id_group`) REFERENCES `game_groups` (`id_group`) ON DELETE SET NULL ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         '''
+		modifications:
+			0.1:
+				-  'ADD `teams_in_game` tinyint(1) unsigned NOT NULL DEFAULT 2 AFTER `end`'
 	LAC\Modules\Tournament\Models\Group:
 		definition: '''
 		(

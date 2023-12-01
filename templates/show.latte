@@ -10,9 +10,36 @@
 	</p>
 	<h2>{lang 'Turnaj'} - {$tournament->name}</h2>
 	<h3>{$tournament->start->format('d.m.Y H:i')}</h3>
-	<p><a href="{link 'tournament', $tournament->id, 'rozlos'}" class="btn btn-primary">{lang 'Rozlosování'}</a></p>
-	<p><a href="{link 'tournament', $tournament->id, 'play'}" class="btn btn-success">{lang 'Hrát'}</a></p>
-	<p><a href="{link 'tournament', $tournament->id, 'results'}" class="btn btn-info">{lang 'Výsledky'}</a></p>
-	<p><a href="{link 'tournament', $tournament->id, 'gate'}" class="btn btn-secondary">{lang 'Výsledková tabule'}</a>
-	</p>
+    <nav class="nav nav-pills">
+        <div class="nav-item">
+            <a href="{link 'tournament', $tournament->id, 'teams'}" class="nav-link text-bg-primary mx-1">
+                <i class="fa-solid fa-people-group"></i>
+                {lang 'Týmy'}
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{link 'tournament', $tournament->id, 'rozlos'}" class="nav-link text-bg-secondary mx-1">
+                <i class="fa-solid fa-list"></i>
+                {lang 'Rozlosování'}
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{link 'tournament', $tournament->id, 'play'}" class="nav-link text-bg-success mx-1">
+                <i class="fa-solid fa-gun"></i>
+                {lang 'Hrát'}
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{link 'tournament', $tournament->id, 'results'}" class="nav-link text-bg-info mx-1">
+                <i class="fa-solid fa-medal"></i>
+                {lang 'Výsledky'}
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{link 'tournament', $tournament->id, 'gate'}" class="nav-link text-bg-warning mx-1">
+                <i class="fa-solid fa-display"></i>
+                {lang 'Výsledková tabule'}
+            </a>
+        </div>
+    </nav>
 {/block}

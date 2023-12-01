@@ -3,8 +3,10 @@
 namespace LAC\Modules\Tournament\Controllers;
 
 use App\Core\Info;
+use App\GameModels\Game\Enums\GameModeType;
 use App\GameModels\Game\Team;
 use App\GameModels\Vest;
+use App\Models\Auth\Player as LigaPlayer;
 use App\Models\MusicMode;
 use DateInterval;
 use DateTimeImmutable;
@@ -13,10 +15,12 @@ use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
 use LAC\Modules\Tournament\Models\Player;
 use LAC\Modules\Tournament\Models\Progression;
+use LAC\Modules\Tournament\Models\Team as TournamentTeam;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Models\TournamentPresetType;
 use LAC\Modules\Tournament\Services\TournamentProvider;
 use Lsr\Core\App;
+use Lsr\Core\Caching\Cache;
 use Lsr\Core\Controller;
 use Lsr\Core\Exceptions\ModelNotFoundException;
 use Lsr\Core\Exceptions\ValidationException;
@@ -45,9 +49,13 @@ class TournamentController extends Controller
 	}
 
 	public function oldTournaments(): void {
-		$this->params['tournaments'] = Tournament::query()->where('[active] = 1 AND DATE([start]) < CURDATE()')->orderBy(
-			'start'
-		)->desc()->get();
+		$this->params['tournaments'] = Tournament::query()
+		                                         ->where('[active] = 1 AND DATE([start]) < CURDATE()')
+		                                         ->orderBy(
+			                                         'start'
+		                                         )
+		                                         ->desc()
+		                                         ->get();
 		$this->view('../modules/Tournament/templates/old');
 	}
 
@@ -102,7 +110,9 @@ class TournamentController extends Controller
 			}
 		}
 
-		$start = new DateTimeImmutable($tournament->start->format('Y-m-d H:i:s') . ' + ' . $tournamentStart . ' minutes');
+		$start = new DateTimeImmutable(
+			$tournament->start->format('Y-m-d H:i:s') . ' + ' . $tournamentStart . ' minutes'
+		);
 		$addInterval = new DateInterval('PT' . ($tournament->gameLength + $tournament->gamePause) . 'M');
 
 		$groupTeamKey = [];
@@ -113,7 +123,7 @@ class TournamentController extends Controller
 			$roundGroupGames = [];
 			$gameCount = 0;
 			foreach ($round->getGroups() as $group) {
-				$games = $group->getGames();
+				$games = $group->getInGame() > 2 ? $group->orderGames() : $group->getGames();
 				$gameCount += count($games);
 				$roundGroupGames[] = $games;
 			}
@@ -141,14 +151,18 @@ class TournamentController extends Controller
 					$gameTeam->game = $game;
 					if ($teamRozlos instanceof BlankTeam) {
 						if (!isset($groupTeamKey[$game->group->id][$teamRozlos->getId()])) {
-							$groupTeamKey[$game->group->id][$teamRozlos->getId()] = count($groupTeamKey[$game->group->id]);
+							$groupTeamKey[$game->group->id][$teamRozlos->getId()] = count(
+								$groupTeamKey[$game->group->id]
+							);
 						}
 						$gameTeam->key = $groupTeamKey[$game->group->id][$teamRozlos->getId()];
 					}
 					else {
 						$gameTeam->team = $teams[$teamRozlos->getId()];
 						if (!isset($groupTeamKey[$game->group->id][$gameTeam->team->id])) {
-							$groupTeamKey[$game->group->id][$gameTeam->team->id] = count($groupTeamKey[$game->group->id]);
+							$groupTeamKey[$game->group->id][$gameTeam->team->id] = count(
+								$groupTeamKey[$game->group->id]
+							);
 						}
 						$gameTeam->key = $groupTeamKey[$game->group->id][$gameTeam->team->id];
 					}
@@ -215,7 +229,10 @@ class TournamentController extends Controller
 		}
 
 		$this->params['game'] = $game;
-		$this->params['upcomingGames'] = Game::query()->where('[id_tournament] = %i AND [code] IS NULL', $tournament->id)->limit(20)->get();
+		$this->params['upcomingGames'] = Game::query()->where(
+			'[id_tournament] = %i AND [code] IS NULL',
+			$tournament->id
+		)->limit(20)->get();
 		$this->params['vests'] = array_values(Vest::getForSystem('evo5'));
 		$this->params['musicModes'] = MusicMode::getAll();
 		$this->params['teamColors'] = $this::EVO5_TEAM_COLORS;
@@ -236,7 +253,10 @@ class TournamentController extends Controller
 		}
 		$this->params['tournament'] = $tournament;
 		$this->params['game'] = $game;
-		$this->params['upcomingGames'] = Game::query()->where('[id_tournament] = %i AND [code] IS NULL', $tournament->id)->limit(20)->get();
+		$this->params['upcomingGames'] = Game::query()->where(
+			'[id_tournament] = %i AND [code] IS NULL',
+			$tournament->id
+		)->limit(20)->get();
 		$this->params['musicModes'] = MusicMode::getAll();
 		$this->params['teamColors'] = $this::EVO5_TEAM_COLORS;
 		$view = $this->latte->viewToString('../modules/Tournament/templates/components/play', $this->params);
@@ -252,8 +272,8 @@ class TournamentController extends Controller
 		 */
 		$data = [
 			'meta' => [
-				'mode' => '0-TEAM_Turnaj',
-				'music' => $request->getPost('music'),
+				'mode'       => '0-TEAM_Turnaj',
+				'music'      => $request->getPost('music'),
 				'tournament' => $tournament->id,
 				'tournament_game' => $game->id,
 			],
@@ -277,7 +297,7 @@ class TournamentController extends Controller
 			}
 			$data['meta']['t' . $color . 'tournament'] = $team->id;
 			$teamData[$color] = [
-				'key' => $color,
+				'key'  => $color,
 				'name' => $asciiName,
 				'playerCount' => 0,
 			];
@@ -401,5 +421,144 @@ class TournamentController extends Controller
 
 	public function progress(Tournament $tournament): never {
 		$this->respond(['progressed' => $this->tournamentProvider->progress($tournament)]);
+	}
+
+	public function create(): void {
+		$this->params['addJs'] = ['modules/tournament/create.js'];
+		$this->view('../modules/Tournament/templates/create');
+	}
+
+	public function createProcess(Request $request): void {
+		/** @var array{name:string,start:string,format:string,team_size:int,teams_in_game:int} $values */
+		$values = [];
+		$errors = [];
+
+		// Validate request
+		$values['name'] = (string)$request->getPost('name', '');
+		if (empty($values['name'])) {
+			$errors['name'] = lang('Název turnaje je povinný');
+		}
+		else if (strlen($values['name']) > 100) {
+			$errors['name'] = lang('Název turnaje nesmí být delší, než 100 znaků');
+		}
+		$values['start'] = (string)$request->getPost('start', date('d.m.Y H:i'));
+		if (empty($values['start'])) {
+			$errors['start'] = lang('Začátek turnaje je povinný');
+		}
+		else if (!strtotime($values['start'])) {
+			$errors['start'] = lang('Začátek turnaje musí být datum a čas');
+		}
+		$values['format'] = (string)$request->getPost('format', 'TEAM');
+		if (empty($values['format'])) {
+			$errors['format'] = lang('Formát turnaje je povinný');
+		}
+		else if (GameModeType::tryFrom($values['format']) === null) {
+			$errors['format'] = lang('Formát turnaje není validní');
+		}
+		$values['team_size'] = (int)$request->getPost('team_size', 5);
+		if ($values['format'] === GameModeType::TEAM->value && $values['team_size'] < 1) {
+			$errors['team_size'] = lang('Velikost týmu je povinná a musí být kladné číslo');
+		}
+		$values['teams_in_game'] = (int)$request->getPost('teams_in_game', 2);
+		$validValues = [2, 3, 4];
+		if ($values['format'] === GameModeType::TEAM->value && !in_array(
+				$values['teams_in_game'],
+				$validValues,
+				true
+			)) {
+			$errors['teams_in_game'] = sprintf(
+				lang('Počet týmů ve hře je povinný a musí být validní hodnota (%s).'),
+				implode(', ', $validValues)
+			);
+		}
+
+
+		if (count($errors) > 0) {
+			$this->params['values'] = $values;
+			$this->params['errors'] = $errors;
+			$this->params['addJs'] = ['modules/tournament/create.js'];
+			$this->view('../modules/Tournament/templates/create');
+			return;
+		}
+
+		// Create tournament
+		$tournament = new Tournament();
+		$tournament->start = new DateTimeImmutable($values['start']);
+		$tournament->format = GameModeType::from($values['format']);
+		$tournament->name = $values['name'];
+		$tournament->teamSize = $values['team_size'];
+		$tournament->teamsInGame = $values['teams_in_game'];
+
+		try {
+			if ($tournament->save()) {
+				App::redirect(['tournament', $tournament->id], $request);
+			}
+		} catch (ValidationException $e) {
+			$errors[] = $e->getMessage();
+		}
+		$errors[] = lang('Turnaj se nepodařilo uložit.');
+		$this->params['values'] = $values;
+		$this->params['errors'] = $errors;
+		$this->params['addJs'] = ['modules/tournament/create.js'];
+		$this->view('../modules/Tournament/templates/create');
+	}
+
+	public function teams(Tournament $tournament, Request $request): void {
+		$teams = $request->getPost('teams');
+		if (isset($teams) && is_array($teams)) {
+			foreach ($teams as $key => $teamData) {
+				if (is_numeric($key)) {
+					$team = TournamentTeam::get((int)$key);
+				}
+				else {
+					$team = new TournamentTeam();
+					$team->tournament = $tournament;
+				}
+				if (!isset($team)) {
+					continue;
+				}
+				$team->name = $teamData['name'];
+				bdump($team);
+				$team->save();
+
+				foreach ($teamData['players'] as $pKey => $playerData) {
+					if (is_numeric($pKey)) {
+						$player = Player::get((int)$pKey);
+					}
+					else {
+						$player = new Player();
+						$player->team = $team;
+						$player->tournament = $tournament;
+					}
+					$player->name = $playerData['name'];
+					$player->surname = $playerData['surname'];
+					$player->nickname = $playerData['nickname'];
+					if (!empty($playerData['code'])) {
+						$user = LigaPlayer::getByCode($playerData['code']);
+						if (isset($user)) {
+							$player->user = $user;
+							$player->email = $user->email;
+						}
+					}
+					$player->save();
+				}
+			}
+			/** @var Cache $cache */
+			$cache = App::getServiceByType(Cache::class);
+			$cache->clean(
+				[
+					Cache::Tags => [
+						'tournament-' . $tournament->id . '-teams',
+						'tournament-' . $tournament->id . '-players',
+					],
+				]
+			);
+			$request->passNotices[] = ['type' => 'success', 'content' => lang('Uloženo')];
+			App::redirect(['tournament', $tournament->id, 'teams'], $request);
+		}
+
+		$this->params['tournament'] = $tournament;
+		$this->params['addJs'] = ['modules/tournament/teams.js'];
+		$this->view('../modules/Tournament/templates/teams');
 	}
 }
