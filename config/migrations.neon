@@ -59,7 +59,7 @@ tables:
 				-  'ADD `teams_in_game` tinyint(1) unsigned NOT NULL DEFAULT 2 AFTER `end`'
 			0.2:
 				- 'ADD `points_second` int(11) NOT NULL DEFAULT 2 AFTER `points_draw`'
-				- 'ADD `points_third` int(11) NOT NULL DEFAULT 1 AFTER `points_third`'
+				- 'ADD `points_third` int(11) NOT NULL DEFAULT 1 AFTER `points_second`'
 	LAC\Modules\Tournament\Models\Group:
 		definition: '''
 		(
