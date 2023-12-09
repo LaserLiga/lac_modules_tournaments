@@ -61,6 +61,9 @@ class Tournament extends Model
 	/** @var Progression[] */
 	private array $progressions = [];
 
+	/** @var MultiProgression[] */
+	private array $multiProgressions = [];
+
 	public function getImageUrl(): ?string {
 		if (!isset($this->image)) {
 			return null;
@@ -143,7 +146,11 @@ class Tournament extends Model
 		foreach ($this->getProgressions() as $progression) {
 			$progression->delete();
 		}
+		foreach ($this->getMultiProgressions() as $progression) {
+			$progression->delete();
+		}
 		$this->progressions = [];
+		$this->multiProgressions = [];
 	}
 
 	/**
@@ -155,6 +162,13 @@ class Tournament extends Model
 			$this->progressions = Progression::query()->where('id_tournament = %i', $this->id)->get();
 		}
 		return $this->progressions;
+	}
+
+	public function getMultiProgressions(): array {
+		if (empty($this->multiProgressions)) {
+			$this->multiProgressions = MultiProgression::query()->where('id_tournament = %i', $this->id)->get();
+		}
+		return $this->multiProgressions;
 	}
 
 	public function getPlannedGame(): ?Game {

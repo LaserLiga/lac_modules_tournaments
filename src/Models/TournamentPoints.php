@@ -19,6 +19,8 @@ class TournamentPoints implements InsertExtendInterface
 		public int   $win = 3,
 		public int   $draw = 1,
 		public int   $loss = 0,
+		public int $second = 2,
+		public int $third = 1,
 		public array $other = [],
 	) {
 	}
@@ -36,6 +38,8 @@ class TournamentPoints implements InsertExtendInterface
 			$row->points_win,
 			$row->points_draw,
 			$row->points_loss,
+			$row->points_second,
+			$row->points_third,
 			$pointsOther
 		);
 	}
@@ -47,6 +51,8 @@ class TournamentPoints implements InsertExtendInterface
 		$data['points_win'] = $this->win;
 		$data['points_draw'] = $this->draw;
 		$data['points_loss'] = $this->loss;
+		$data['points_second'] = $this->second;
+		$data['points_third'] = $this->third;
 		$data['points_other'] = json_encode($this->other);
 	}
 }

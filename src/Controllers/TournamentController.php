@@ -13,6 +13,7 @@ use DateTimeImmutable;
 use LAC\Modules\Tournament\Models\Game;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
+use LAC\Modules\Tournament\Models\MultiProgression;
 use LAC\Modules\Tournament\Models\Player;
 use LAC\Modules\Tournament\Models\Progression;
 use LAC\Modules\Tournament\Models\Team as TournamentTeam;
@@ -29,6 +30,7 @@ use Lsr\Core\Templating\Latte;
 use Lsr\Helpers\Tools\Strings;
 use Lsr\Logging\Exceptions\DirectoryCreationException;
 use TournamentGenerator\BlankTeam;
+use TournamentGenerator\MultiProgression as MultiProgressionRozlos;
 use TournamentGenerator\Progression as ProgressionRozlos;
 
 class TournamentController extends Controller
@@ -36,10 +38,7 @@ class TournamentController extends Controller
 
 	public const EVO5_TEAM_COLORS = [0 => 1, 1 => 2, 2 => 0, 3 => 3, 4 => 4, 5 => 5];
 
-	public function __construct(
-		Latte                               $latte,
-		private readonly TournamentProvider $tournamentProvider
-	) {
+	public function __construct(Latte $latte, private readonly TournamentProvider $tournamentProvider) {
 		parent::__construct($latte);
 	}
 
@@ -84,8 +83,14 @@ class TournamentController extends Controller
 		$tournament->gamePause = (int)$request->getPost('game-pause', 5);
 		$tournamentStart = (int)$request->getPost('tournament-start', 30);
 		$iterations = (int)$request->getPost('game-repeat', 1);
+		$args = $request->getPost('args', []);
 
-		$tournamentRozlos = $this->tournamentProvider->createTournamentFromPreset($type, $tournament, $iterations);
+		$tournamentRozlos = $this->tournamentProvider->createTournamentFromPreset(
+			$type,
+			$tournament,
+			$iterations,
+			is_array($args) ? $args : [],
+		);
 
 		$this->tournamentProvider->reset($tournament);
 
@@ -94,6 +99,8 @@ class TournamentController extends Controller
 		$groups = [];
 		/** @var ProgressionRozlos $progressions */
 		$progressions = [];
+		/** @var MultiProgression[] $multiProgressions */
+		$multiProgressions = [];
 		foreach ($rounds as $round) {
 			foreach ($round->getGroups() as $groupRozlos) {
 				$group = new Group();
@@ -105,7 +112,17 @@ class TournamentController extends Controller
 				$groups[$group->id] = $group;
 				$groupRozlos->setId($group->id);
 				foreach ($groupRozlos->getProgressions() as $progression) {
-					$progressions[] = $progression;
+					if ($progression instanceof ProgressionRozlos) {
+						$progressions[] = $progression;
+					}
+					else if ($progression instanceof MultiProgressionRozlos) {
+						// Generate key to prevent duplicates, because the progression is saved in multiple groups
+						$ids = array_map(static fn(\TournamentGenerator\Group $g) => $g->getId(),
+							$progression->getFrom());
+						sort($ids);
+						$key = implode('-', $ids) . '->' . $group->id;
+						$multiProgressions[$key] = $progression;
+					}
 				}
 			}
 		}
@@ -197,6 +214,33 @@ class TournamentController extends Controller
 
 			$progression->save();
 		}
+
+		foreach ($multiProgressions as $progressionRozlos) {
+			$progression = new MultiProgression();
+			$progression->tournament = $tournament;
+			$progression->from = [];
+			foreach ($progressionRozlos->getFrom() as $from) {
+				$progression->from[] = $groups[$from->getId()];
+			}
+			$progression->to = $groups[$progressionRozlos->getTo()->getId()];
+			$progression->start = $progressionRozlos->getStart();
+			$progression->length = $progressionRozlos->getLen();
+			$progression->filters = serialize($progressionRozlos->getFilters());
+			$progression->points = $progressionRozlos->getPoints() ?? 0;
+			$progression->totalStart = $progressionRozlos->getTotalStart();
+			$progression->totalLength = $progressionRozlos->getTotalCount();
+
+			$keys = [];
+			$count = $progression->totalLength ?? ($progression->length * count($progression->from));
+			if ($count > 0) {
+				for ($i = 0; $i < $count; $i++) {
+					$keys[] = array_shift($groupTeamKey[$progression->to->id]);
+				}
+			}
+			$progression->setKeys($keys);
+
+			$progression->save();
+		}
 		$request->passNotices[] = ['type' => 'success', 'content' => lang('Vygenerováno')];
 		App::redirect(['tournament', $tournament->id, 'rozlos'], $request);
 	}
@@ -272,7 +316,7 @@ class TournamentController extends Controller
 		 */
 		$data = [
 			'meta' => [
-				'mode'       => '0-TEAM_Turnaj',
+				'mode'       => Info::get('tournament_game_mode', '0-TEAM_Turnaj'),
 				'music'      => $request->getPost('music'),
 				'tournament' => $tournament->id,
 				'tournament_game' => $game->id,
@@ -488,6 +532,12 @@ class TournamentController extends Controller
 		$tournament->name = $values['name'];
 		$tournament->teamSize = $values['team_size'];
 		$tournament->teamsInGame = $values['teams_in_game'];
+
+		$tournament->points->win = (int)$request->getPost('points_win', 3);
+		$tournament->points->draw = (int)$request->getPost('points_draw', 1);
+		$tournament->points->loss = (int)$request->getPost('points_loss', 0);
+		$tournament->points->second = (int)$request->getPost('points_second', 2);
+		$tournament->points->third = (int)$request->getPost('points_third', 1);
 
 		try {
 			if ($tournament->save()) {

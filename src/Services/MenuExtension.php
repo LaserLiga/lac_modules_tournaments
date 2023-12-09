@@ -17,5 +17,13 @@ class MenuExtension implements MenuExtensionInterface
 			'route' => 'tournaments',
 			'order' => 50,
 		];
+
+		if (!isset($menu['settings'])) {
+			return;
+		}
+		$menu['settings']['children'][] = [
+			'name'  => lang('Turnaje'),
+			'route' => 'settings-tournament',
+		];
 	}
 }

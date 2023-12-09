@@ -25,8 +25,11 @@
 		"laser_arena_control/core_module": "*",
 		"lsr/core": "^0.2",
 		"lsr/helpers": "^0.2",
-		"heroyt/tournament-generator": "^0.5.4"
-	},
+    "heroyt/tournament-generator": "^0.5.5"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-latest"
+  },
 	"autoload": {
 		"psr-4": {
 			"LAC\\Modules\\Tournament\\": "src/"

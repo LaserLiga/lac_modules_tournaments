@@ -60,6 +60,59 @@
             </div>
         </div>
 
+        <div class="form-group mb-3 team-only">
+            <label for="points_win" class="form-label">{lang 'Body za výhru'}</label>
+            <input type="number" id="points_win"
+                   name="points_win" n:class="form-control, isset($errors['points_win']) ? 'is-invalid'"
+                   value="{$values['points_win'] ?? '3'}">
+            <div n:ifset="$errors['points_win']" class="invalid-feedback">
+                {$errors['points_win']}
+            </div>
+        </div>
+
+        <div class="form-group mb-3 team-only">
+            <label for="points_draw" class="form-label">{lang 'Body za remízu'}</label>
+            <input type="number" id="points_draw"
+                   name="points_draw" n:class="form-control, isset($errors['points_draw']) ? 'is-invalid'"
+                   value="{$values['points_draw'] ?? '1'}">
+            <div n:ifset="$errors['points_draw']" class="invalid-feedback">
+                {$errors['points_draw']}
+            </div>
+        </div>
+
+        <div class="form-group mb-3 team-only">
+            <label for="points_loss" class="form-label">{lang 'Body za prohru'}</label>
+            <input type="number" id="points_loss"
+                   name="points_loss" n:class="form-control, isset($errors['points_loss']) ? 'is-invalid'"
+                   value="{$values['points_loss'] ?? '0'}">
+            <div class="form-text">{lang 'Poslední místo. Ve hře 3 týmů je to 3. místo, ve hře čtyř týmů je to 4. místo.'}</div>
+            <div n:ifset="$errors['points_loss']" class="invalid-feedback">
+                {$errors['points_loss']}
+            </div>
+        </div>
+
+        <div class="form-group mb-3 team-only">
+            <label for="points_second" class="form-label">{lang 'Body za druhé místo'}</label>
+            <input type="number" id="points_second"
+                   name="points_second" n:class="form-control, isset($errors['points_second']) ? 'is-invalid'"
+                   value="{$values['points_second'] ?? '2'}">
+            <div class="form-text">{lang 'Jen pro hru 3 a 4 týmů ve hře.'}</div>
+            <div n:ifset="$errors['points_second']" class="invalid-feedback">
+                {$errors['points_second']}
+            </div>
+        </div>
+
+        <div class="form-group mb-3 team-only">
+            <label for="points_third" class="form-label">{lang 'Body za třetí místo'}</label>
+            <input type="number" id="points_third"
+                   name="points_third" n:class="form-control, isset($errors['points_third']) ? 'is-invalid'"
+                   value="{$values['points_third'] ?? '1'}">
+            <div class="form-text">{lang 'Jen pro hru 4 týmů ve hře.'}</div>
+            <div n:ifset="$errors['points_third']" class="invalid-feedback">
+                {$errors['points_third']}
+            </div>
+        </div>
+
         <button type="submit" class="btn btn-success">{lang 'Odeslat'}</button>
     </form>
 {/block}

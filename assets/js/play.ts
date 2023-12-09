@@ -34,15 +34,15 @@ function initContent(form: HTMLFormElement) {
     let selectedVests: string[] = [];
     const progressTeams = document.getElementById('progressTeams') as HTMLButtonElement;
     progressTeams.addEventListener('click', () => {
-        startLoading(true);
+        startLoading();
         axios.post(progressTeams.dataset.action, {})
             .then((response: AxiosResponse<{ progressed: number }>) => {
-                stopLoading(true, true);
+                stopLoading(true);
                 alert(progressTeams.dataset.alert + ' ' + response.data.progressed);
             })
             .catch(e => {
                 console.error(e);
-                stopLoading(false, true);
+                stopLoading(false);
             });
     });
 

@@ -13,13 +13,36 @@ enum TournamentPresetType: string
 
 	case ROUND_ROBIN = 'rr';
 	case TWO_GROUPS_ROBIN = '2grr';
-	case TWO_GROUPS_ROBIN_10 = '2grr10';
+	case TWO_GROUPS_ROBIN_10        = '2grr10';
+	case BASE_ROUND_AND_BARRAGE     = 'gBarrage';
+	case TWO_BASE_ROUND_AND_BARRAGE = '2gBarrage';
 
 	public function getReadableValue(): string {
 		return match ($this) {
-			self::ROUND_ROBIN => lang('Každý s každým', context: 'tournament.presets'),
-			self::TWO_GROUPS_ROBIN => lang('Každý s každým na poloviny', context: 'tournament.presets'),
-			self::TWO_GROUPS_ROBIN_10 => lang('Každý s každým na poloviny - 10 týmů', context: 'tournament.presets'),
+			self::ROUND_ROBIN                => lang('Každý s každým', context: 'tournament.presets'),
+			self::TWO_GROUPS_ROBIN           => lang('Každý s každým na poloviny', context: 'tournament.presets'),
+			self::TWO_GROUPS_ROBIN_10        => lang(
+				         'Každý s každým na poloviny - 10 týmů',
+				context: 'tournament.presets'
+			),
+			self::BASE_ROUND_AND_BARRAGE     => lang('3 základní hry a baráž', context: 'tournament.presets'),
+			self::TWO_BASE_ROUND_AND_BARRAGE => lang(
+				         '3 základní hry na poloviny a baráž',
+				context: 'tournament.presets'
+			),
+		};
+	}
+
+	/**
+	 * Retrieves the in-game compatibility for the current instance.
+	 *
+	 * @return int[] The in-game compatibility values.
+	 */
+	public function getInGameCompatibility(): array {
+		return match ($this) {
+			self::TWO_GROUPS_ROBIN, self::TWO_GROUPS_ROBIN_10 => [2],
+			self::TWO_BASE_ROUND_AND_BARRAGE                  => [3],
+			default                                           => [2, 3, 4],
 		};
 	}
 

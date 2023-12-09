@@ -39,11 +39,28 @@ class Team extends Model
 	 */
 	private array $keys;
 
+	/** @var Game[] */
+	private array $games = [];
+
 	public function getScore(): int {
 		if (!isset($this->score)) {
 			$this->score = DB::select(GameTeam::TABLE, 'SUM([score])')->where('[id_team] = %i', $this->id)->fetchSingle(false) ?? 0;
 		}
 		return $this->score;
+	}
+
+	public function getScoreForGroup(Group $group): int {
+		$gameIds = array_map(static fn(Game $game) => $game->id, $group->getGames());
+		return DB::select(GameTeam::TABLE, 'SUM([score])')
+		         ->where('[id_team] = %i AND [id_game] IN %in', $this->id, $gameIds)
+		         ->fetchSingle(false) ?? 0;
+	}
+
+	public function getPointsForGroup(Group $group): int {
+		$gameIds = array_map(static fn(Game $game) => $game->id, $group->getGames());
+		return DB::select(GameTeam::TABLE, 'SUM([points])')
+		         ->where('[id_team] = %i AND [id_game] IN %in', $this->id, $gameIds)
+		         ->fetchSingle(false) ?? 0;
 	}
 
 	public function insert(): bool {
@@ -115,6 +132,35 @@ class Team extends Model
 	public function getGroupKeys(): array {
 		$this->keys ??= DB::select([GameTeam::TABLE, 'a'], 'b.id_group, a.key')->join(Game::TABLE, 'b')->on('a.id_game = b.id_game')->where('a.id_team = %i', $this->id)->groupBy('id_group')->fetchPairs('id_group', 'key', false);
 		return $this->keys;
+	}
+
+	/**
+	 * @return Game[]
+	 * @throws ValidationException
+	 */
+	public function getGames(): array {
+		if (empty($this->games)) {
+			foreach ($this->tournament->getGames() as $game) {
+				if ($game->hasTeam($this)) {
+					$this->games[] = $game;
+				}
+			}
+		}
+		return $this->games;
+	}
+
+	/**
+	 * @return Game[]
+	 * @throws ValidationException
+	 */
+	public function getGamesAgainst(Team $team): array {
+		$games = [];
+		foreach ($this->getGames() as $game) {
+			if ($game->hasTeam($team)) {
+				$games[] = $game;
+			}
+		}
+		return $games;
 	}
 
 }

@@ -43,6 +43,8 @@ tables:
           `points_win` int(11) NOT NULL DEFAULT 3,
           `points_loss` int(11) NOT NULL DEFAULT 0,
           `points_draw` int(11) NOT NULL DEFAULT 1,
+		  `points_second` int(11) NOT NULL DEFAULT 2,
+		  `points_third` int(11) NOT NULL DEFAULT 1,
           `points_other` varchar(300) NOT NULL DEFAULT '[]',
           PRIMARY KEY (`id_tournament`),
           KEY `id_league` (`id_league`),
@@ -55,6 +57,9 @@ tables:
 		modifications:
 			0.1:
 				-  'ADD `teams_in_game` tinyint(1) unsigned NOT NULL DEFAULT 2 AFTER `end`'
+			0.2:
+				- 'ADD `points_second` int(11) NOT NULL DEFAULT 2 AFTER `points_draw`'
+				- 'ADD `points_third` int(11) NOT NULL DEFAULT 1 AFTER `points_third`'
 	LAC\Modules\Tournament\Models\Group:
 		definition: '''
 		(
@@ -184,5 +189,38 @@ tables:
           CONSTRAINT `tournament_progressions_ibfk_1` FOREIGN KEY (`id_tournament`) REFERENCES `tournaments` (`id_tournament`) ON DELETE CASCADE ON UPDATE CASCADE,
           CONSTRAINT `tournament_progressions_ibfk_2` FOREIGN KEY (`id_group_from`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE,
           CONSTRAINT `tournament_progressions_ibfk_3` FOREIGN KEY (`id_group_to`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+		'''
+	LAC\Modules\Tournament\Models\MultiProgression:
+		definition: '''
+		(
+          `id_progression` int(11) unsigned NOT NULL AUTO_INCREMENT,
+          `id_public` int(11) unsigned DEFAULT NULL,
+          `id_tournament` int(11) unsigned NOT NULL,
+          `id_group_to` int(11) unsigned NOT NULL,
+          `start` int(11) DEFAULT NULL,
+          `length` int(11) DEFAULT NULL,
+          `total_start` int(11) DEFAULT NULL,
+          `total_length` int(11) DEFAULT NULL,
+          `filters` text DEFAULT NULL,
+          `keys` text DEFAULT NULL,
+          `points` int(11) NOT NULL DEFAULT 0,
+          PRIMARY KEY (`id_progression`),
+          KEY `id_tournament` (`id_tournament`),
+          KEY `id_group_to` (`id_group_to`),
+          CONSTRAINT `tournament_multi_progressions_ibfk_1` FOREIGN KEY (`id_tournament`) REFERENCES `tournaments` (`id_tournament`) ON DELETE CASCADE ON UPDATE CASCADE,
+          CONSTRAINT `tournament_multi_progressions_ibfk_3` FOREIGN KEY (`id_group_to`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+		'''
+	tournament_multi_progressions_from:
+		definition: '''
+		(
+          `id_progression` int(11) unsigned NOT NULL,
+          `id_group` int(11) unsigned NOT NULL,
+          PRIMARY KEY (`id_progression`,`id_group`),
+          KEY `id_progression` (`id_progression`),
+          KEY `id_group` (`id_group`),
+          CONSTRAINT `tournament_multi_progressions_from_ibfk_1` FOREIGN KEY (`id_progression`) REFERENCES `tournament_multi_progressions` (`id_progression`) ON DELETE CASCADE ON UPDATE CASCADE,
+          CONSTRAINT `tournament_multi_progressions_from_ibfk_2` FOREIGN KEY (`id_group`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''

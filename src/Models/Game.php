@@ -74,4 +74,13 @@ class Game extends Model
 		return $this->game;
 	}
 
+	public function hasTeam(Team $team): bool {
+		foreach ($this->teams as $checkTeam) {
+			if ($team->id === $checkTeam->team?->id) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 }

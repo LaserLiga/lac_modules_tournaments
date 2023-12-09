@@ -13,7 +13,7 @@
         </a>
     </p>
     <h2>{lang 'Turnaj'} - {$tournament->name}</h2>
-    <h3>{lang 'Rozlosování'}</h3>
+    <h3>{lang 'Rozlosování'} ({sprintf(lang('Týmů ve hře: %d'), $tournament->teamsInGame)})</h3>
     {if empty($games)}
         {include clearTournament}
     {else}
@@ -27,10 +27,13 @@
         <div class="form-group my-2">
             <label for="tournament-type" class="form-label">{lang 'Typ turnaje'}</label>
             <select name="tournament-type" id="tournament-type" class="form-select">
-                <option n:foreach="LAC\Modules\Tournament\Models\TournamentPresetType::cases() as $case" {if isset($_POST['tournament-type']) && $_POST['tournament-type'] === $case->value}selected{/if}
-                        value="{$case->value}">
-                    {$case->getReadableValue()}
-                </option>
+                {foreach LAC\Modules\Tournament\Models\TournamentPresetType::cases() as $case}
+                    {continueIf !in_array($tournament->teamsInGame, $case->getInGameCompatibility(), true)}
+                    <option {if isset($_POST['tournament-type']) && $_POST['tournament-type'] === $case->value}selected{/if}
+                            value="{$case->value}">
+                        {$case->getReadableValue()}
+                    </option>
+                {/foreach}
             </select>
         </div>
 
@@ -63,6 +66,19 @@
                    value="{$_POST['tournament-start'] ?? 30}">
         </div>
 
+        <div class="barrage-args" style="display: none;">
+            <div class="form-group my-2 d-none">
+                <label for="barrage-base-games" class="form-label">{lang 'Počet her na tým v základní skupině'}</label>
+                <input type="number" name="args[base_game_count]" class="form-control" id="barrage-base-games"
+                       value="{$_POST['args']['base_game_count'] ?? 3}">
+            </div>
+            <div class="form-group my-2">
+                <label for="barrage-rounds" class="form-label">{lang 'Maximální počet kol baráže'}</label>
+                <input type="number" name="args[max_barrage_rounds]" class="form-control" id="barrage-rounds"
+                       value="{$_POST['args']['max_barrage_rounds'] ?? 4}">
+            </div>
+        </div>
+
         <hr class="my-5">
 
         <p>
@@ -71,8 +87,8 @@
         </p>
         <p>{lang 'Počet her'}: <span id="tournament-games"></span></p>
         <p>{lang 'Předpokládaná délka turnaje'}: <span id="tournament-length"></span></p>
-        <p>{lang 'Počet her na tým'}: <span id="tournament-games-per-team"></span></p>
-        <p>{lang 'Čas ve hře na tým'}: <span id="tournament-time-per-team"></span></p>
+        <p>{lang 'Předpokládaný počet her na tým'}: <span id="tournament-games-per-team"></span></p>
+        <p>{lang 'Předpokládaný čas ve hře na tým'}: <span id="tournament-time-per-team"></span></p>
         <hr class="my-5">
         <p>
             <button type="submit" class="btn btn-primary">{lang 'Odeslat'}</button>
@@ -90,6 +106,7 @@
     <table class="table table-striped">
         <thead>
         <tr>
+            <th></th>
             <th>{lang 'Začátek'}</th>
             {switch $tournament->teamsInGame}
                 {case 3}
@@ -110,6 +127,7 @@
         </thead>
         <tbody>
         <tr n:foreach="$games as $game">
+            <th>{$iterator->counter}.</th>
             <td>{$game->start->format('H:i')}</td>
             <td n:foreach="$game->teams as $team">
                 {$team->getName()}
@@ -117,5 +135,37 @@
             <td>{$game->group->name}</td>
         </tr>
         </tbody>
+    </table>
+
+    <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+            <th></th>
+            <th n:foreach="$tournament->getTeams() as $team" class="text-center">{$team->name}</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr n:foreach="$tournament->getTeams() as $team">
+            <th>{$team->name}</th>
+            {foreach $tournament->getTeams() as $team2}
+                {if $team->id !== $team2->id}
+                    {var int $count = count($team->getGamesAgainst($team2))}
+                    <td n:class="$count === 1 ? text-bg-primary, $count > 1 ? text-bg-warning, text-center">
+                        {$count}
+                    </td>
+                {else}
+                    <td class="text-bg-danger text-center">
+                        X
+                    </td>
+                {/if}
+            {/foreach}
+        </tr>
+        </tbody>
+        <tfoot>
+        <tr>
+            <th>{lang 'Celkem her'}</th>
+            <th n:foreach="$tournament->getTeams() as $team" class="text-center">{$team->getGames()|length}</th>
+        </tr>
+        </tfoot>
     </table>
 {/define}

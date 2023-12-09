@@ -3,13 +3,13 @@
 {varType LAC\Modules\Tournament\Models\Tournament $tournament}
 
 {block content}
-	<p>
-		<a href="{link 'tournament'}" class="btn btn-warning">
-			<i class="fa-solid fa-caret-left"></i> {lang 'Zpět'}
-		</a>
-	</p>
-	<h2>{lang 'Turnaj'} - {$tournament->name}</h2>
-	<h3>{$tournament->start->format('d.m.Y H:i')}</h3>
+    <p>
+        <a href="{link 'tournament'}" class="btn btn-warning">
+            <i class="fa-solid fa-caret-left"></i> {lang 'Zpět'}
+        </a>
+    </p>
+    <h2>{lang 'Turnaj'} - {$tournament->name}</h2>
+    <h3>{$tournament->start->format('d.m.Y H:i')}</h3>
     <nav class="nav nav-pills">
         <div class="nav-item">
             <a href="{link 'tournament', $tournament->id, 'teams'}" class="nav-link text-bg-primary mx-1">
@@ -42,4 +42,34 @@
             </a>
         </div>
     </nav>
+
+    <section class="my-5 d-flex flex-wrap">
+        {foreach $tournament->groups as $group}
+            {var LAC\Modules\Tournament\Models\Team[] $teams = $group->getTeamsSorted()}
+            {continueIf count($teams) === 0}
+            <div class="card m-3" style="max-width: 500px;">
+                <div class="card-body">
+                    <h3 class="card-title">{$group->name}</h3>
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>{lang 'Pořadí'}</th>
+                            <th>{lang 'Tým'}</th>
+                            <th class="text-end">{lang 'Skóre'}</th>
+                            <th class="text-end">{lang 'Body'}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr n:foreach="$teams as $key => $team">
+                            <td>{$key+1}.</td>
+                            <td>{$team->name}</td>
+                            <td class="text-end">{$team->getScoreForGroup($group)|number:0,',',' '}</td>
+                            <td class="text-end">{$team->getPointsForGroup($group)|number:0,',',' '}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {/foreach}
+    </section>
 {/block}

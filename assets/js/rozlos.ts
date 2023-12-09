@@ -17,16 +17,37 @@ window.addEventListener('load', () => {
     const tournamentGamesPerTeam = document.getElementById('tournament-games-per-team') as HTMLSpanElement;
     const tournamentTimePerTeam = document.getElementById('tournament-time-per-team') as HTMLSpanElement;
 
+    const gamesPerTeamInput = document.getElementById('barrage-base-games') as HTMLInputElement;
+    const barrageRoundsInput = document.getElementById('barrage-rounds') as HTMLInputElement;
+
+    const barrageArgs = document.querySelector('.barrage-args') as HTMLDivElement;
+
     recalculate();
 
     tournamentType.addEventListener('change', recalculate);
     gameRepeat.addEventListener('change', recalculate);
     gameLength.addEventListener('input', recalculate);
     gamePause.addEventListener('input', recalculate);
+    if (gamesPerTeamInput) {
+        gamesPerTeamInput.addEventListener('input', recalculate);
+    }
+    if (barrageRoundsInput) {
+        barrageRoundsInput.addEventListener('input', recalculate);
+    }
+    if (barrageArgs) {
+        tournamentType.addEventListener('change', () => {
+            if (tournamentType.value === 'gBarrage' || tournamentType.value === '2gBarrage') {
+                barrageArgs.style.display = 'block';
+            } else {
+                barrageArgs.style.display = 'none';
+            }
+        });
+    }
 
     function recalculate() {
         let games = 0;
         let gamesPerTeam = 0;
+        let barrageRounds = 0;
         switch (tournamentType.value) {
             case 'rr':
                 switch (teamsInGame) {
@@ -48,6 +69,22 @@ window.addEventListener('load', () => {
                 const half = teamCount / 2;
                 gamesPerTeam = (half - 1) * 2;
                 games = (half * (half - 1) / 2) * 4;
+                break;
+            case 'gBarrage':
+                gamesPerTeam = (gamesPerTeamInput ? gamesPerTeamInput.valueAsNumber : 3) + 1;
+                barrageRounds = Math.min(
+                    barrageRoundsInput ? barrageRoundsInput.valueAsNumber : 4,
+                    Math.floor(1 + ((teamCount - teamsInGame) / (teamsInGame - 1)))
+                );
+                games = teamCount + barrageRounds;
+                break;
+            case '2gBarrage':
+                gamesPerTeam = (gamesPerTeamInput ? gamesPerTeamInput.valueAsNumber : 3) + 1;
+                barrageRounds = Math.min(
+                    barrageRoundsInput ? barrageRoundsInput.valueAsNumber : 4,
+                    Math.floor(1 + ((teamCount - teamsInGame) / (teamsInGame - 1)))
+                );
+                games = teamCount + barrageRounds + 2;
                 break;
         }
 
