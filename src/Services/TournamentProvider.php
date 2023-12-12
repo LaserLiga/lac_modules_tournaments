@@ -46,7 +46,7 @@ class TournamentProvider
 	public function sync(): bool {
 		// Sync leagues
 		try {
-			$response = $this->api->get('/api/league');
+			$response = $this->api->get('/api/leagues');
 			/** @var array{id:int,name:string,image:string|null,description:string|null}[] $leagues */
 			$leagues = json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
 			$this->logger->debug('Got ' . count($leagues) . ' leagues');
