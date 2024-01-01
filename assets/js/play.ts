@@ -83,7 +83,8 @@ function initContent(form: HTMLFormElement) {
             });
         });
 
-        updateBonusBtn.addEventListener('click', () => {
+        updateBonusBtn.addEventListener('click', e => {
+            e.preventDefault();
             const bonus: { [index: number]: number } = {};
             bonusInputs.forEach(input => {
                 if (input.value === '') {
