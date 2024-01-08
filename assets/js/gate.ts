@@ -1,6 +1,6 @@
 import EventServerInstance from "../../../../assets/js/EventServer";
 import {loadContent, tipsRotations} from "../../../../assets/js/components/gate";
-import {gameTimer} from "../../../../assets/js/functions";
+import {gameTimer} from "../../../../assets/js/includes/functions";
 
 export let reloadTimeout: { timeout: null | ReturnType<typeof setTimeout> } = {timeout: null};
 window.addEventListener('load', () => {

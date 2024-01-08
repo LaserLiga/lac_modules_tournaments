@@ -1,10 +1,10 @@
 import Player from './modules/Player';
-import axios, {AxiosResponse} from "axios";
 import {startLoading, stopLoading} from "../../../../assets/js/loaders";
 import EventServerInstance from "../../../../assets/js/EventServer";
 import Control from "../../../../assets/js/pages/newGame/control";
 import {isFeatureEnabled} from "../../../../assets/js/featureConfig";
-import {shuffle} from "../../../../assets/js/functions";
+import {shuffle} from "../../../../assets/js/includes/functions";
+import {fetchGet, fetchPost} from "../../../../assets/js/includes/apiClient";
 
 declare global {
     const vests: {
@@ -20,10 +20,10 @@ window.addEventListener('load', () => {
     EventServerInstance.addEventListener('game-imported', updateContent);
 
     function updateContent() {
-        axios.get(form.dataset.results)
-            .then((response: AxiosResponse<{ status: string, view?: string }>) => {
-                if (response.data.view) {
-                    form.innerHTML = response.data.view;
+        fetchGet(form.dataset.results)
+            .then((response: { status: string, view?: string }) => {
+                if (response.view) {
+                    form.innerHTML = response.view;
                     initContent(form);
                 }
             });
@@ -35,10 +35,10 @@ function initContent(form: HTMLFormElement) {
     const progressTeams = document.getElementById('progressTeams') as HTMLButtonElement;
     progressTeams.addEventListener('click', () => {
         startLoading();
-        axios.post(progressTeams.dataset.action, {})
-            .then((response: AxiosResponse<{ progressed: number }>) => {
+        fetchPost(progressTeams.dataset.action, {})
+            .then((response: { progressed: number }) => {
                 stopLoading(true);
-                alert(progressTeams.dataset.alert + ' ' + response.data.progressed);
+                alert(progressTeams.dataset.alert + ' ' + response.progressed);
             })
             .catch(e => {
                 console.error(e);
@@ -54,7 +54,7 @@ function initContent(form: HTMLFormElement) {
                 return;
             }
             startLoading();
-            axios.post(resetBtn.dataset.action, {})
+            fetchPost(resetBtn.dataset.action, {})
                 .then(() => {
                     window.location.reload();
                 })
@@ -96,7 +96,7 @@ function initContent(form: HTMLFormElement) {
             });
 
             startLoading();
-            axios.post(updateBonusAction, {bonus})
+            fetchPost(updateBonusAction, {bonus})
                 .then(() => {
                     window.location.reload();
                 })
@@ -270,14 +270,14 @@ function initContent(form: HTMLFormElement) {
 
     function loadGame(data: FormData, callback: null | (() => void) = null): void {
         startLoading();
-        axios.post(form.getAttribute('action'), data)
-            .then((response: AxiosResponse<{ status: string, mode?: string }>) => {
+        fetchPost(form.getAttribute('action'), data)
+            .then((response: { status: string, mode?: string }) => {
                 stopLoading();
-                if (!response.data.mode || response.data.mode === '') {
+                if (!response.mode || response.mode === '') {
                     console.error('Got invalid mode');
                     return;
                 }
-                const mode = response.data.mode;
+                const mode = response.mode;
 
                 if (control) {
                     control.loadGame(mode, callback);
@@ -290,14 +290,14 @@ function initContent(form: HTMLFormElement) {
 
     function loadStartGame(data: FormData, callback: null | (() => void) = null): void {
         startLoading();
-        axios.post('/', data)
-            .then((response: AxiosResponse<{ status: string, mode?: string }>) => {
+        fetchPost('/', data)
+            .then((response: { status: string, mode?: string }) => {
                 stopLoading();
-                if (!response.data.mode || response.data.mode === '') {
+                if (!response.mode || response.mode === '') {
                     console.error('Got invalid mode');
                     return;
                 }
-                const mode = response.data.mode;
+                const mode = response.mode;
 
                 if (control) {
                     control.loadStart(mode, callback);
