@@ -2,9 +2,9 @@
 
 namespace LAC\Modules\Tournament\Controllers;
 
+use App\Core\App;
 use App\Core\Info;
-use Lsr\Core\App;
-use Lsr\Core\Controller;
+use Lsr\Core\Controllers\Controller;
 use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Core\Requests\Request;
 use Lsr\Exceptions\TemplateDoesNotExistException;

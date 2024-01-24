@@ -60,8 +60,8 @@ class TeamDataExtension implements GameDataExtensionInterface
 	}
 
 	public function setBonus(Team $team): void {
-		if (isset($team->game->tournamentGame, $team->tournamentTeam)) {
-			foreach ($team->game->tournamentGame->teams as $tournamentTeam) {
+		if (isset($team->getGame()?->tournamentGame, $team->tournamentTeam)) {
+			foreach ($team->getGame()->tournamentGame->teams as $tournamentTeam) {
 				if ($tournamentTeam->team->id !== $team->tournamentTeam->id) {
 					continue;
 				}

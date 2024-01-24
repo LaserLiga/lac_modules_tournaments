@@ -2,6 +2,7 @@
 
 namespace LAC\Modules\Tournament\Services;
 
+use App\Core\App;
 use App\GameModels\Game\Game;
 use App\Tools\AbstractResultsParser;
 use LAC\Modules\Core\ResultParserExtensionInterface;
@@ -9,7 +10,6 @@ use LAC\Modules\Tournament\Models\Game as TournamentGame;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
 use LAC\Modules\Tournament\Models\Tournament;
-use Lsr\Core\App;
 use Lsr\Core\Exceptions\ModelNotFoundException;
 
 class ResultParserExtension implements ResultParserExtensionInterface

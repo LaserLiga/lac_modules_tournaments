@@ -2,7 +2,7 @@
 
 namespace LAC\Modules\Tournament\Models;
 
-use Lsr\Core\App;
+use App\Core\App;
 use Lsr\Core\Models\Attributes\PrimaryKey;
 use Lsr\Core\Models\Model;
 

@@ -2,10 +2,10 @@
 
 namespace LAC\Modules\Tournament\Models;
 
+use App\Core\App;
 use App\GameModels\Game\Enums\GameModeType;
 use App\Models\GameGroup;
 use DateTimeInterface;
-use Lsr\Core\App;
 use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Core\Models\Attributes\Instantiate;
 use Lsr\Core\Models\Attributes\ManyToOne;

@@ -2,10 +2,10 @@
 
 namespace LAC\Modules\Tournament\Models;
 
+use App\Core\App;
 use App\Models\Auth\Player as LigaPlayer;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Lsr\Core\App;
 use Lsr\Core\DB;
 use Lsr\Core\Models\Attributes\ManyToOne;
 use Lsr\Core\Models\Attributes\PrimaryKey;

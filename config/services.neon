@@ -39,8 +39,8 @@ search:
 	tournament.controllers:
 		in: %tournament.root%src/Controllers
 		extends:
-			- Lsr\Core\Controller
-			- Lsr\Core\ApiController
-			- Lsr\Core\CliController
+			- Lsr\Core\Controllers\Controller
+			- Lsr\Core\Controllers\ApiController
+			- Lsr\Core\Controllers\CliController
 		tags:
 			- controllers

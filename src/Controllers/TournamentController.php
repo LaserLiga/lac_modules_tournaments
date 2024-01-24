@@ -2,6 +2,7 @@
 
 namespace LAC\Modules\Tournament\Controllers;
 
+use App\Core\App;
 use App\Core\Info;
 use App\GameModels\Game\Enums\GameModeType;
 use App\GameModels\Game\Team;
@@ -20,9 +21,8 @@ use LAC\Modules\Tournament\Models\Team as TournamentTeam;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Models\TournamentPresetType;
 use LAC\Modules\Tournament\Services\TournamentProvider;
-use Lsr\Core\App;
 use Lsr\Core\Caching\Cache;
-use Lsr\Core\Controller;
+use Lsr\Core\Controllers\Controller;
 use Lsr\Core\Exceptions\ModelNotFoundException;
 use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Core\Requests\Request;

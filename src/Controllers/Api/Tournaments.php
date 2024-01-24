@@ -4,7 +4,7 @@ namespace LAC\Modules\Tournament\Controllers\Api;
 
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Services\TournamentProvider;
-use Lsr\Core\ApiController;
+use Lsr\Core\Controllers\ApiController;
 use Lsr\Core\Templating\Latte;
 
 class Tournaments extends ApiController
