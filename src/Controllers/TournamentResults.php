@@ -2,7 +2,7 @@
 
 namespace LAC\Modules\Tournament\Controllers;
 
-use App\Controllers\CommonGateMethods;
+use App\Controllers\Gate\CommonGateMethods;
 use App\Core\Info;
 use App\GameModels\Factory\GameFactory;
 use App\GameModels\Game\Evo5\Player;
