@@ -14,13 +14,14 @@ use LAC\Modules\Tournament\Models\Tournament;
 use Lsr\Core\Constants;
 use Lsr\Core\Controllers\Controller;
 use Lsr\Core\DB;
+use Psr\Http\Message\ResponseInterface;
 
 class TournamentResults extends Controller
 {
 
 	use CommonGateMethods;
 
-	public function results(Tournament $tournament): void {
+	public function results(Tournament $tournament): ResponseInterface {
 		$this->params['tournament'] = $tournament;
 		$this->params['teams'] = $tournament->getTeams();
 		$this->params['games'] = $tournament->getGames();
@@ -89,10 +90,10 @@ class TournamentResults extends Controller
 			$this->params['hitsOwnPlayers'][] = ['player' => TournamentPlayer::get($row->id_tournament_player), 'value' => $row->hitsOwn];
 		}
 
-		$this->view('../modules/Tournament/templates/results');
+		return $this->view('../modules/Tournament/templates/results');
 	}
 
-	public function gate(Tournament $tournament): void {
+	public function gate(Tournament $tournament): ResponseInterface {
 		$this->params['tournament'] = $tournament;
 		$this->params['style'] = PrintStyle::getActiveStyle();
 		$this->params['addJs'] = ['modules/tournament/gate.js'];
@@ -115,11 +116,10 @@ class TournamentResults extends Controller
 		$gateTime = Info::get('gate-time', $now);
 		if (isset($test) && ($now - $gateTime) <= Constants::TMP_GAME_RESULTS_TIME) {
 			$this->params['reloadTimer'] = Constants::TMP_GAME_RESULTS_TIME - ($now - $gateTime) + 2;
-			header('X-Reload-Time: ' . $this->params['reloadTimer']);
 			$this->game = $test;
 			if ($this->checkTournamentGame($tournament)) {
-				$this->getResults();
-				return;
+				return $this->getResults()
+				            ->withHeader('X-Reload-Time', $this->params['reloadTimer']);
 			}
 		}
 
@@ -127,10 +127,9 @@ class TournamentResults extends Controller
 		$lastGame = GameFactory::getLastGame($system);
 		if (isset($lastGame) && ($now - $lastGame->end?->getTimestamp()) <= Constants::GAME_RESULTS_TIME) {
 			$this->params['reloadTimer'] = Constants::GAME_RESULTS_TIME - ($now - $lastGame->end?->getTimestamp()) + 2;
-			header('X-Reload-Time: ' . $this->params['reloadTimer']);
 			$this->game = $lastGame;
-			$this->getResults();
-			return;
+			return $this->getResults()
+			            ->withHeader('X-Reload-Time', $this->params['reloadTimer']);
 		}
 
 		// Try to find the last loaded or started games in selected systems
@@ -148,18 +147,18 @@ class TournamentResults extends Controller
 			}
 		}
 
+		$response = $this->getIdle($tournament);
 		if (isset($this->params['reloadTimer'])) {
-			header('X-Reload-Time: ' . $this->params['reloadTimer']);
+			return $response->withHeader('X-Reload-Time', $this->params['reloadTimer']);
 		}
-
-		$this->getIdle($tournament);
+		return $response;
 	}
 
 	private function checkTournamentGame(Tournament $tournament): bool {
 		return isset($this->game, $this->game->tournamentGame) && $this->game->tournamentGame->tournament->id === $tournament->id;
 	}
 
-	private function getIdle(Tournament $tournament): void {
+	private function getIdle(Tournament $tournament): ResponseInterface {
 		$this->params['game'] = $this->game;
 		$this->params['games'] = $tournament->getGames();
 		$this->params['teams'] = $tournament->getTeams();
@@ -174,7 +173,7 @@ class TournamentResults extends Controller
 			return $b->getScore() - $a->getScore();
 		});
 
-		$this->view('../modules/Tournament/templates/gate');
+		return $this->view('../modules/Tournament/templates/gate');
 	}
 
 }

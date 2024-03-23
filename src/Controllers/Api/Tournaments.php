@@ -6,6 +6,7 @@ use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Services\TournamentProvider;
 use Lsr\Core\Controllers\ApiController;
 use Lsr\Core\Templating\Latte;
+use Psr\Http\Message\ResponseInterface;
 
 class Tournaments extends ApiController
 {
@@ -17,34 +18,34 @@ class Tournaments extends ApiController
 		parent::__construct($latte);
 	}
 
-	public function getAll(): never {
-		$this->respond(Tournament::getAll());
+	public function getAll(): ResponseInterface {
+		return $this->respond(Tournament::getAll());
 	}
 
-	public function get(Tournament $tournament): never {
-		$this->respond($tournament);
+	public function get(Tournament $tournament): ResponseInterface {
+		return $this->respond($tournament);
 	}
 
-	public function sync(): never {
+	public function sync(): ResponseInterface {
 		if ($this->tournamentProvider->sync()) {
-			$this->respond(['status' => 'ok']);
+			return $this->respond(['status' => 'ok']);
 		}
-		$this->respond(['status' => 'error'], 500);
+		return $this->respond(['status' => 'error'], 500);
 	}
 
-	public function recalculatePoints(Tournament $tournament): never {
+	public function recalculatePoints(Tournament $tournament): ResponseInterface {
 		$this->tournamentProvider->recalcTeamPoints($tournament);
 
 		$this->tournamentProvider->syncGames($tournament);
 
-		$this->respond(['status' => 'ok']);
+		return $this->respond(['status' => 'ok']);
 	}
 
-	public function syncGames(Tournament $tournament): never {
+	public function syncGames(Tournament $tournament): ResponseInterface {
 		if ($this->tournamentProvider->syncGames($tournament)) {
-			$this->respond(['status' => 'ok']);
+			return $this->respond(['status' => 'ok']);
 		}
-		$this->respond(['status' => 'error'], 500);
+		return $this->respond(['status' => 'error'], 500);
 	}
 
 }
