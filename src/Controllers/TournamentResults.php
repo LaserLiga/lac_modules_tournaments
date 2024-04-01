@@ -2,37 +2,44 @@
 
 namespace LAC\Modules\Tournament\Controllers;
 
+use App\Api\Response\ErrorDto;
+use App\Api\Response\ErrorType;
 use App\Controllers\Gate\CommonGateMethods;
-use App\Core\Info;
-use App\GameModels\Factory\GameFactory;
 use App\GameModels\Game\Evo5\Player;
-use App\GameModels\Game\Game;
-use App\GameModels\Game\PrintStyle;
+use App\Gate\Gate;
+use App\Gate\Models\GateType;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
 use LAC\Modules\Tournament\Models\Team;
 use LAC\Modules\Tournament\Models\Tournament;
-use Lsr\Core\Constants;
 use Lsr\Core\Controllers\Controller;
 use Lsr\Core\DB;
+use Lsr\Core\Exceptions\ValidationException;
+use Lsr\Core\Templating\Latte;
 use Psr\Http\Message\ResponseInterface;
+use Throwable;
 
 class TournamentResults extends Controller
 {
 
+	public function __construct(Latte $latte, private readonly Gate $gate) {
+		parent::__construct($latte);
+	}
+
 	use CommonGateMethods;
 
-	public function results(Tournament $tournament): ResponseInterface {
+	public function results(Tournament $tournament) : ResponseInterface {
 		$this->params['tournament'] = $tournament;
 		$this->params['teams'] = $tournament->getTeams();
 		$this->params['games'] = $tournament->getGames();
 
-		usort($this->params['teams'], static function (Team $a, Team $b) {
-			$diff = $b->points - $a->points;
-			if ($diff !== 0) {
-				return $diff;
-			}
-			return $b->getScore() - $a->getScore();
-		});
+		usort($this->params['teams'],
+			static function(Team $a, Team $b) {
+				$diff = $b->points - $a->points;
+				if ($diff !== 0) {
+					return $diff;
+				}
+				return $b->getScore() - $a->getScore();
+			});
 
 		$this->params['bestPlayers'] = [];
 		$this->params['accuracyPlayers'] = [];
@@ -54,7 +61,10 @@ class TournamentResults extends Controller
 			->cacheTags(Player::TABLE, ...Player::CACHE_TAGS)
 			->fetchAll();
 		foreach ($bestPlayers as $row) {
-			$this->params['bestPlayers'][] = ['player' => TournamentPlayer::get($row->id_tournament_player), 'value' => $row->skill];
+			$this->params['bestPlayers'][] = [
+				'player' => TournamentPlayer::get($row->id_tournament_player),
+				'value'  => $row->skill,
+			];
 		}
 
 		$accuracyPlayers = DB::select(Player::TABLE, '[id_tournament_player], [name], MAX([accuracy]) as [accuracy]')
@@ -65,7 +75,10 @@ class TournamentResults extends Controller
 			->cacheTags(Player::TABLE, ...Player::CACHE_TAGS)
 			->fetchAll();
 		foreach ($accuracyPlayers as $row) {
-			$this->params['accuracyPlayers'][] = ['player' => TournamentPlayer::get($row->id_tournament_player), 'value' => $row->accuracy];
+			$this->params['accuracyPlayers'][] = [
+				'player' => TournamentPlayer::get($row->id_tournament_player),
+				'value'  => $row->accuracy,
+			];
 		}
 
 		$shotsPlayers = DB::select(Player::TABLE, '[id_tournament_player], [name], SUM([shots]) as [shots]')
@@ -76,7 +89,10 @@ class TournamentResults extends Controller
 			->cacheTags(Player::TABLE, ...Player::CACHE_TAGS)
 			->fetchAll();
 		foreach ($shotsPlayers as $row) {
-			$this->params['shotsPlayers'][] = ['player' => TournamentPlayer::get($row->id_tournament_player), 'value' => $row->shots];
+			$this->params['shotsPlayers'][] = [
+				'player' => TournamentPlayer::get($row->id_tournament_player),
+				'value'  => $row->shots,
+			];
 		}
 
 		$hitsOwnPlayers = DB::select(Player::TABLE, '[id_tournament_player], [name], SUM([hits_own]) as [hitsOwn]')
@@ -87,91 +103,51 @@ class TournamentResults extends Controller
 			->cacheTags(Player::TABLE, ...Player::CACHE_TAGS)
 			->fetchAll();
 		foreach ($hitsOwnPlayers as $row) {
-			$this->params['hitsOwnPlayers'][] = ['player' => TournamentPlayer::get($row->id_tournament_player), 'value' => $row->hitsOwn];
+			$this->params['hitsOwnPlayers'][] = [
+				'player' => TournamentPlayer::get($row->id_tournament_player),
+				'value'  => $row->hitsOwn,
+			];
 		}
 
 		return $this->view('../modules/Tournament/templates/results');
 	}
 
-	public function gate(Tournament $tournament): ResponseInterface {
+	public function gate(Tournament $tournament, string $gate = 'tournament_default') : ResponseInterface {
 		$this->params['tournament'] = $tournament;
-		$this->params['style'] = PrintStyle::getActiveStyle();
-		$this->params['addJs'] = ['modules/tournament/gate.js'];
-		$this->params['addCss'] = ['modules/tournament/gate.css'];
 
 		// Allow for filtering games just from one system
 		$system = $_GET['system'] ?? 'all';
-		$systems = [$system];
-
-		// Fallback to all available systems
-		if ($system === 'all') {
-			$systems = GameFactory::getSupportedSystems();
+		$gateType = GateType::getBySlug(empty($gate) ? 'tournament_default' : $gate);
+		if (!isset($gateType)) {
+			return $this->respond(new ErrorDto('Gate type not found.', ErrorType::NOT_FOUND, values: ['slug' => $gate]), 404);
 		}
 
-		$now = time();
-
-		/** @var Game|null $test */
-		$test = Info::get('gate-game');
-		/** @var int $gateTime */
-		$gateTime = Info::get('gate-time', $now);
-		if (isset($test) && ($now - $gateTime) <= Constants::TMP_GAME_RESULTS_TIME) {
-			$this->params['reloadTimer'] = Constants::TMP_GAME_RESULTS_TIME - ($now - $gateTime) + 2;
-			$this->game = $test;
-			if ($this->checkTournamentGame($tournament)) {
-				return $this->getResults()
-				            ->withHeader('X-Reload-Time', $this->params['reloadTimer']);
-			}
+		try {
+			return $this->gate->getCurrentScreen($gateType, $system)->setParams($this->params)->run();
+		} catch (ValidationException | Throwable $e) {
+			return $this->respond(new ErrorDto('An error has occured', exception: $e), 500);
 		}
-
-		// Get the results of the last game played if it had finished in the last 2 minutes
-		$lastGame = GameFactory::getLastGame($system);
-		if (isset($lastGame) && ($now - $lastGame->end?->getTimestamp()) <= Constants::GAME_RESULTS_TIME) {
-			$this->params['reloadTimer'] = Constants::GAME_RESULTS_TIME - ($now - $lastGame->end?->getTimestamp()) + 2;
-			$this->game = $lastGame;
-			return $this->getResults()
-			            ->withHeader('X-Reload-Time', $this->params['reloadTimer']);
-		}
-
-		// Try to find the last loaded or started games in selected systems
-		foreach ($systems as $system) {
-			/** @var Game|null $started */
-			$started = Info::get($system . '-game-started');
-			if (isset($started) && ($now - $started->start?->getTimestamp()) <= Constants::GAME_STARTED_TIME) {
-				if (isset($this->game) && $this->game->fileTime > $started->fileTime) {
-					continue;
-				}
-				$this->params['reloadTimer'] = Constants::GAME_STARTED_TIME - ($now - $started->start?->getTimestamp()) + 2;
-				$started->end = null;
-				$started->finished = false;
-				$this->game = $started;
-			}
-		}
-
-		$response = $this->getIdle($tournament);
-		if (isset($this->params['reloadTimer'])) {
-			return $response->withHeader('X-Reload-Time', $this->params['reloadTimer']);
-		}
-		return $response;
 	}
 
-	private function checkTournamentGame(Tournament $tournament): bool {
+	private function checkTournamentGame(Tournament $tournament) : bool {
 		return isset($this->game, $this->game->tournamentGame) && $this->game->tournamentGame->tournament->id === $tournament->id;
 	}
 
-	private function getIdle(Tournament $tournament): ResponseInterface {
+	private function getIdle(Tournament $tournament) : ResponseInterface {
 		$this->params['game'] = $this->game;
 		$this->params['games'] = $tournament->getGames();
 		$this->params['teams'] = $tournament->getTeams();
 		$this->params['addJs'] = ['modules/tournament/gate.js'];
 		$this->params['addCss'] = ['modules/tournament/gate.css'];
 
-		usort($this->params['teams'], static function (Team $a, Team $b) {
-			$diff = $b->points - $a->points;
-			if ($diff !== 0) {
-				return $diff;
-			}
-			return $b->getScore() - $a->getScore();
-		});
+		usort($this->params['teams'],
+			static function(Team $a, Team $b) {
+				$diff = $b->points - $a->points;
+				if ($diff !== 0) {
+					return $diff;
+				}
+				return $b->getScore() - $a->getScore();
+			});
 
 		return $this->view('../modules/Tournament/templates/gate');
 	}

@@ -35,6 +35,8 @@ services:
 		tags:
 			- ligaApiExtension
 	tournamentProvider: LAC\Modules\Tournament\Services\TournamentProvider
+
+	gate.tournament.results: LAC\Modules\Tournament\Gate\Screens\TournamentResultsScreen
 search:
 	tournament.controllers:
 		in: %tournament.root%src/Controllers
