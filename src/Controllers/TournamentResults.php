@@ -25,8 +25,6 @@ class TournamentResults extends Controller
 		parent::__construct($latte);
 	}
 
-	use CommonGateMethods;
-
 	public function results(Tournament $tournament) : ResponseInterface {
 		$this->params['tournament'] = $tournament;
 		$this->params['teams'] = $tournament->getTeams();

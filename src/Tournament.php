@@ -21,6 +21,7 @@ class Tournament extends Module
 			$gateType = new GateType();
 			$gateType->setName('Turnaj')
 			         ->setSlug('tournament_default')
+				->setLocked(true)
 			         ->setDescription('Základní výsledková tabule turnajových výsledků');
 
 			$idle = new GateScreenModel();
