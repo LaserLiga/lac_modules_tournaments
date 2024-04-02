@@ -1,41 +1,55 @@
-import EventServerInstance from "../../../../assets/js/EventServer";
-import {loadContent, tipsRotations} from "../../../../assets/js/components/gate";
-import {gameTimer} from '../../../../assets/js/includes/gameTimer';
+import GateScreen from '../../../../assets/js/gate/gateScreen';
 
-export let reloadTimeout: { timeout: null | ReturnType<typeof setTimeout> } = {timeout: null};
-window.addEventListener('load', () => {
+export default class TournamentScreen implements GateScreen {
+	content: HTMLDivElement;
+	private removePreviousContent: () => void;
+	private interval: NodeJS.Timeout;
 
-	if (reloadTimer && reloadTimer > 0) {
-		reloadTimeout.timeout = setTimeout(() => {
-			loadContent(window.location.pathname, reloadTimeout);
-		}, reloadTimer * 1000);
+	init(content: HTMLDivElement, removePreviousContent: () => void): void {
+		this.content = content;
+		this.removePreviousContent = removePreviousContent;
+
+		// Games scroll
+		this.interval = setInterval(() => {
+			const gamesList: HTMLDivElement = this.content.querySelector('.tournament-games-content-wrapper');
+			if (!gamesList) {
+				return;
+			}
+
+			// Find first unfinished game
+			const firstNotFinishedRow: HTMLTableRowElement = this.content.querySelector('.tournament-games-content-wrapper').querySelector('tr:not(.finished)');
+			if (!firstNotFinishedRow) {
+				return;
+			}
+
+			const midPoint = gamesList.getBoundingClientRect().y + (gamesList.getBoundingClientRect().height / 2);
+			const y = firstNotFinishedRow.getBoundingClientRect().y;
+			console.log(firstNotFinishedRow, midPoint, y);
+			if (y > midPoint) {
+				gamesList.scrollBy({top: y - midPoint, behavior: 'smooth'});
+			}
+		}, 5000);
 	}
 
-	// WebSocket event listener
-	EventServerInstance.addEventListener(['game-imported', 'gate-reload'], () => {
-		loadContent(window.location.pathname, reloadTimeout);
-	});
+	isSame(active: GateScreen): boolean {
+		return false;
+	}
 
-	tipsRotations();
-    gameTimer();
+	animateIn(): void {
+		this.content.classList.add('content', 'in');
 
-    setInterval(() => {
-        const gamesList: HTMLDivElement = document.querySelector('.tournament-games-content-wrapper');
-        if (!gamesList) {
-            return;
-        }
+		setTimeout(() => {
+			this.removePreviousContent();
+			this.content.classList.remove('in');
+		}, 2000);
+	}
 
-        // Find first unfinished game
-        const firstNotFinishedRow: HTMLTableRowElement = document.querySelector('.tournament-games-content-wrapper').querySelector('tr:not(.finished)');
-        if (!firstNotFinishedRow) {
-            return;
-        }
+	animateOut(): void {
+		this.content.classList.add('out');
+		clearInterval(this.interval);
+	}
 
-        const midPoint = gamesList.getBoundingClientRect().y + (gamesList.getBoundingClientRect().height / 2);
-        const y = firstNotFinishedRow.getBoundingClientRect().y;
-        console.log(firstNotFinishedRow, midPoint, y)
-        if (y > midPoint) {
-            gamesList.scrollBy({top: y - midPoint, behavior: 'smooth'});
-        }
-    }, 5000);
-});
+	showTimer(): boolean {
+		return true;
+	}
+}

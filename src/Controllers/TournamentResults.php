@@ -4,7 +4,6 @@ namespace LAC\Modules\Tournament\Controllers;
 
 use App\Api\Response\ErrorDto;
 use App\Api\Response\ErrorType;
-use App\Controllers\Gate\CommonGateMethods;
 use App\GameModels\Game\Evo5\Player;
 use App\Gate\Gate;
 use App\Gate\Models\GateType;
@@ -125,29 +124,6 @@ class TournamentResults extends Controller
 		} catch (ValidationException | Throwable $e) {
 			return $this->respond(new ErrorDto('An error has occured', exception: $e), 500);
 		}
-	}
-
-	private function checkTournamentGame(Tournament $tournament) : bool {
-		return isset($this->game, $this->game->tournamentGame) && $this->game->tournamentGame->tournament->id === $tournament->id;
-	}
-
-	private function getIdle(Tournament $tournament) : ResponseInterface {
-		$this->params['game'] = $this->game;
-		$this->params['games'] = $tournament->getGames();
-		$this->params['teams'] = $tournament->getTeams();
-		$this->params['addJs'] = ['modules/tournament/gate.js'];
-		$this->params['addCss'] = ['modules/tournament/gate.css'];
-
-		usort($this->params['teams'],
-			static function(Team $a, Team $b) {
-				$diff = $b->points - $a->points;
-				if ($diff !== 0) {
-					return $diff;
-				}
-				return $b->getScore() - $a->getScore();
-			});
-
-		return $this->view('../modules/Tournament/templates/gate');
 	}
 
 }
