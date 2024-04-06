@@ -13,6 +13,7 @@ use LAC\Modules\Tournament\Models\Tournament;
 use Lsr\Core\Controllers\Controller;
 use Lsr\Core\DB;
 use Lsr\Core\Exceptions\ValidationException;
+use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
@@ -109,11 +110,14 @@ class TournamentResults extends Controller
 		return $this->view('../modules/Tournament/templates/results');
 	}
 
-	public function gate(Tournament $tournament, string $gate = 'tournament_default') : ResponseInterface {
+	public function gate(
+		Tournament $tournament,
+		Request    $request,
+		string     $gate = 'tournament_default') : ResponseInterface {
 		$this->params['tournament'] = $tournament;
 
 		// Allow for filtering games just from one system
-		$system = $_GET['system'] ?? 'all';
+		$system = $request->getGet('system', 'all');
 		$gateType = GateType::getBySlug(empty($gate) ? 'tournament_default' : $gate);
 		if (!isset($gateType)) {
 			return $this->respond(new ErrorDto('Gate type not found.', ErrorType::NOT_FOUND, values: ['slug' => $gate]), 404);
