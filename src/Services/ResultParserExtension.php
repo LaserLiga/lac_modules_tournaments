@@ -4,6 +4,7 @@ namespace LAC\Modules\Tournament\Services;
 
 use App\Core\App;
 use App\GameModels\Game\Game;
+use App\GameModels\Game\Team;
 use App\Tools\AbstractResultsParser;
 use LAC\Modules\Core\ResultParserExtensionInterface;
 use LAC\Modules\Tournament\Models\Game as TournamentGame;
@@ -28,6 +29,7 @@ class ResultParserExtension implements ResultParserExtensionInterface
 				$group->clearCache();
 				$game->tournamentGame = TournamentGame::get((int)$meta['tournament_game']);
 
+          /** @var Team $win */
 				$win = $game->mode?->getWin($game);
 
 				/** @var GameTeam[] $positions */
@@ -39,6 +41,7 @@ class ResultParserExtension implements ResultParserExtensionInterface
 						}
 						$gameTeam->score = $team->score;
 						$gameTeam->position = $team->position;
+              $gameTeam->color = $team->color;
 						$positions[$gameTeam->position] = $gameTeam;
 					}
 				}
@@ -72,7 +75,7 @@ class ResultParserExtension implements ResultParserExtensionInterface
 							if (!isset($win)) {
 								$gameTeam->points = $tournament->points->draw;
 							}
-							else if ($win === $team) {
+              elseif ($win->color === $gameTeam->color) {
 								$gameTeam->points = $tournament->points->win;
 							}
 							else {

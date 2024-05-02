@@ -3,6 +3,7 @@
 namespace LAC\Modules\Tournament\Models;
 
 use Lsr\Core\Models\Attributes\ManyToOne;
+use Lsr\Core\Models\Attributes\NoDB;
 use Lsr\Core\Models\Attributes\PrimaryKey;
 use Lsr\Core\Models\Model;
 
@@ -24,6 +25,9 @@ class GameTeam extends Model
 	public ?Team $team = null;
 
 	private string $name;
+
+    #[NoDB]
+    public ?int $color = null;
 
 	public function getName(): string {
 		if (isset($this->name)) {
