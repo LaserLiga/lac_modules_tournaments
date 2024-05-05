@@ -1,9 +1,15 @@
 #gate {
 	main {
+		.timer.timer-tournament {
+			bottom: initial;
+			left: 2rem;
+			top: calc(26% - 3rem);
+			width: calc(20% - 1.2rem);
+		}
 		.content.tournament {
+			grid-template-areas: 'logo . games' 'timer . games' 'results results games';
 			grid-template-columns: calc(20% - 2rem) 3fr 2fr;
 			grid-template-rows: 12rem 1fr auto;
-			grid-template-areas: "logo . games" "timer . games" "results results games";
 
 			.title {
 				grid-area: title;

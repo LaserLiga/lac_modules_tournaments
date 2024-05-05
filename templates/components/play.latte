@@ -2,6 +2,8 @@
 {varType LAC\Modules\Tournament\Models\Game $game}
 {varType LAC\Modules\Tournament\Models\Game[] $upcomingGames}
 {varType App\Models\MusicMode[] $musicModes}
+{varType App\Gate\Models\MusicGroupDto[] $musicGroups}
+{varType App\Models\Playlist[] $playlists}
 {varType App\GameModels\Vest[] $vests}
 {varType array < int,int > $teamColors}
 
@@ -92,10 +94,47 @@
                         {lang 'Hudební mód', context: 'game'}:
                     </label>
                     <div class="input-group">
-                        <select name="music" id="music-select" class="form-select">
-                            <option n:foreach="$musicModes as $musicMode"
-                                    value="{$musicMode->id}">{$musicMode->name}</option>
+                        <input type="checkbox" id="playlists" name="use-playlist" value="1" class="btn-check">
+                        <label for="playlists" class="btn btn-outline-info rounded-start" data-toggle="tooltip"
+                               title="{lang 'Playlisty'}">
+                            <i class="fa-solid fa-music"></i>
+                        </label>
+                        <select name="playlist" id="playlist-select" class="form-select d-none">
+                            <option n:foreach="$playlists as $playlist" value="{$playlist->id}"
+                                                                        data-music="{json_encode($playlist->getMusicIds())}">
+                                {$playlist->name}
+                            </option>
                         </select>
+                        <select name="music" id="music-select" class="form-select">
+                            {var string $lastGroup = ''}
+                            {foreach $musicModes as $musicMode}
+                                {if !empty($musicMode->group) && $musicMode->group !== $lastGroup}
+                                    {if $lastGroup !== ''}
+                                        </optgroup>
+                                    {/if}
+                                {do $lastGroup = $musicMode->group}
+                                    <optgroup label="{$musicMode->group}">
+                                        {elseif empty($musicMode->group) && !empty($lastGroup)}
+                                    </optgroup>
+                                    {do $lastGroup = ''}
+                                {/if}
+                                <option data-group="{$musicMode->group}"
+                                        value="{$musicMode->id}">{$musicMode->name}</option>
+                            {/foreach}
+                            {if !empty($lastGroup)}
+                                </optgroup>
+                            {/if}
+                        </select>
+                        <input type="checkbox" id="music-mode-grouped" value="1" class="btn-check">
+                        <label for="music-mode-grouped" class="btn btn-outline-primary" data-toggle="tooltip"
+                               title="{lang 'Slučovat hudební skupiny'}">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </label>
+                        <button type="button" data-bs-toggle="modal" data-bs-target="#music-modes-display"
+                                class="btn btn-info"
+                                data-toggle="tooltip" title="{lang 'Zobrazit přehled hudebních módů'}">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
                         <button type="button" data-toggle="shuffle" title="{lang 'Náhodně', context: 'actions'}"
                                 data-target="#music-select" class="btn btn-purple-500">
                             <i class="fa-solid fa-shuffle"></i>
@@ -161,7 +200,7 @@
             <a n:foreach="$upcomingGames as $upcomingGame"
                     class="list-group-item py-2 list-group-item-action {if $upcomingGame->id === $game->id}active{/if}"
                     href="{link 'tournament', $tournament->id, 'play', $upcomingGame->id}">
-                <div class="text-center mb-1">{$upcomingGame->start->format('H:i')}</div>
+                <div class="text-center mb-1">{$upcomingGame?->start?->format('H:i')}</div>
                 <div class="d-flex justify-content-evenly text-center flex-wrap align-items-center">
                     <div n:foreach="$upcomingGame->teams as $team"
                             class="m-1" style="min-width: 80px;">

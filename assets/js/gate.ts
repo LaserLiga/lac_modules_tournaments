@@ -1,13 +1,20 @@
+import DefaultScreen from '../../../../assets/js/gate/defaultScreen';
 import GateScreen from '../../../../assets/js/gate/gateScreen';
 
-export default class TournamentScreen implements GateScreen {
-	content: HTMLDivElement;
-	private removePreviousContent: () => void;
+export default class TournamentScreen extends DefaultScreen {
 	private interval: NodeJS.Timeout;
 
-	init(content: HTMLDivElement, removePreviousContent: () => void): void {
-		this.content = content;
-		this.removePreviousContent = removePreviousContent;
+	isSame(active: GateScreen): boolean {
+		return false;
+	}
+
+	animateIn(): void {
+		super.animateOut();
+
+		const timer = this.content.parentElement.querySelector<HTMLDivElement>('.timer');
+		if (timer) {
+			timer.classList.add('timer-tournament');
+		}
 
 		// Games scroll
 		this.interval = setInterval(() => {
@@ -31,22 +38,16 @@ export default class TournamentScreen implements GateScreen {
 		}, 5000);
 	}
 
-	isSame(active: GateScreen): boolean {
-		return false;
-	}
-
-	animateIn(): void {
-		this.content.classList.add('content', 'in');
-
-		setTimeout(() => {
-			this.removePreviousContent();
-			this.content.classList.remove('in');
-		}, 2000);
-	}
-
 	animateOut(): void {
-		this.content.classList.add('out');
-		clearInterval(this.interval);
+		super.animateOut();
+		if (this.interval) {
+			clearInterval(this.interval);
+		}
+
+		const timer = this.content.parentElement.querySelector<HTMLDivElement>('.timer');
+		if (timer) {
+			timer.classList.remove('timer-tournament');
+		}
 	}
 
 	showTimer(): boolean {

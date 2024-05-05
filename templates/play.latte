@@ -5,6 +5,8 @@
 {varType LAC\Modules\Tournament\Models\Game[] $upcomingGames}
 {varType App\GameModels\Vest[] $vests}
 {varType App\Models\MusicMode[] $musicModes}
+{varType App\Gate\Models\MusicGroupDto[] $musicGroups}
+{varType App\Models\Playlist[] $playlists}
 
 {varType array < int,int > $teamColors}
 
@@ -57,6 +59,7 @@
 	</form>
 	{dump $vests}
 	{include scoreDownloadModal}
+    {include '../../../templates/pages/new-game/helpers/musicModesDisplay.latte', $musicGroups}
 	<script>
 		const vests = {$vests};
 	</script>

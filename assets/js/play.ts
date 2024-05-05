@@ -1,310 +1,407 @@
 import Player from './modules/Player';
-import {startLoading, stopLoading} from "../../../../assets/js/loaders";
-import EventServerInstance from "../../../../assets/js/EventServer";
-import Control from "../../../../assets/js/pages/newGame/control";
-import {isFeatureEnabled} from "../../../../assets/js/featureConfig";
-import {shuffle} from "../../../../assets/js/includes/functions";
-import {fetchGet, fetchPost} from "../../../../assets/js/includes/apiClient";
+import {startLoading, stopLoading} from '../../../../assets/js/loaders';
+import EventServerInstance from '../../../../assets/js/EventServer';
+import Control from '../../../../assets/js/pages/newGame/control';
+import {isFeatureEnabled} from '../../../../assets/js/featureConfig';
+import {shuffle} from '../../../../assets/js/includes/functions';
+import {fetchGet, fetchPost} from '../../../../assets/js/includes/apiClient';
 
 declare global {
-    const vests: {
-        id: number,
-        vestNum: string,
-    }[]
+	const vests: {
+		id: number,
+		vestNum: string,
+	}[];
 }
 
 window.addEventListener('load', () => {
-    const form = document.getElementById('tournament-play-form') as HTMLFormElement;
-    initContent(form);
+	const form = document.getElementById('tournament-play-form') as HTMLFormElement;
+	initContent(form);
 
-    EventServerInstance.addEventListener('game-imported', updateContent);
+	EventServerInstance.addEventListener('game-imported', updateContent);
 
-    function updateContent() {
-        fetchGet(form.dataset.results)
-            .then((response: { status: string, view?: string }) => {
-                if (response.view) {
-                    form.innerHTML = response.view;
-                    initContent(form);
-                }
-            });
-    }
+	function updateContent() {
+		fetchGet(form.dataset.results)
+			.then((response: { status: string, view?: string }) => {
+				if (response.view) {
+					form.innerHTML = response.view;
+					initContent(form);
+				}
+			});
+	}
 });
 
 function initContent(form: HTMLFormElement) {
-    let selectedVests: string[] = [];
-    const progressTeams = document.getElementById('progressTeams') as HTMLButtonElement;
-    progressTeams.addEventListener('click', () => {
-        startLoading();
-        fetchPost(progressTeams.dataset.action, {})
-            .then((response: { progressed: number }) => {
-                stopLoading(true);
-                alert(progressTeams.dataset.alert + ' ' + response.progressed);
-            })
-            .catch(e => {
-                console.error(e);
-                stopLoading(false);
-            });
-    });
+	let selectedVests: string[] = [];
+	const progressTeams = document.getElementById('progressTeams') as HTMLButtonElement;
+	progressTeams.addEventListener('click', () => {
+		startLoading();
+		fetchPost(progressTeams.dataset.action, {})
+			.then((response: { progressed: number }) => {
+				stopLoading(true);
+				alert(progressTeams.dataset.alert + ' ' + response.progressed);
+			})
+			.catch(e => {
+				console.error(e);
+				stopLoading(false);
+			});
+	});
 
-    const results = document.getElementById('results') as HTMLDivElement | undefined;
-    if (results) {
-        const resetBtn = document.getElementById('reset-game') as HTMLButtonElement;
-        resetBtn.addEventListener('click', () => {
-            if (!confirm(resetBtn.dataset.confirm)) {
-                return;
-            }
-            startLoading();
-            fetchPost(resetBtn.dataset.action, {})
-                .then(() => {
-                    window.location.reload();
-                })
-                .catch(e => {
-                    stopLoading(false);
-                    console.error(e);
-                });
-        });
+	const results = document.getElementById('results') as HTMLDivElement | undefined;
+	if (results) {
+		const resetBtn = document.getElementById('reset-game') as HTMLButtonElement;
+		resetBtn.addEventListener('click', () => {
+			if (!confirm(resetBtn.dataset.confirm)) {
+				return;
+			}
+			startLoading();
+			fetchPost(resetBtn.dataset.action, {})
+				.then(() => {
+					window.location.reload();
+				})
+				.catch(e => {
+					stopLoading(false);
+					console.error(e);
+				});
+		});
 
-        const bonusInputs = results.querySelectorAll('.team-bonus') as NodeListOf<HTMLInputElement>;
-        const updateBonusBtn = results.querySelector('#updateBonus') as HTMLButtonElement;
-        const updateBonusAction = updateBonusBtn.dataset.action;
+		const bonusInputs = results.querySelectorAll('.team-bonus') as NodeListOf<HTMLInputElement>;
+		const updateBonusBtn = results.querySelector('#updateBonus') as HTMLButtonElement;
+		const updateBonusAction = updateBonusBtn.dataset.action;
 
-        bonusInputs.forEach(input => {
-            input.addEventListener('input', () => {
-                const value = parseInt(input.value);
-                if (isNaN(value)) {
-                    input.classList.remove('text-danger', 'text-success');
-                } else if (value > 0) {
-                    input.classList.remove('text-danger');
-                    input.classList.add('text-success');
-                } else {
-                    input.classList.add('text-danger');
-                    input.classList.remove('text-success');
-                }
-            });
-        });
+		bonusInputs.forEach(input => {
+			input.addEventListener('input', () => {
+				const value = parseInt(input.value);
+				if (isNaN(value)) {
+					input.classList.remove('text-danger', 'text-success');
+				} else if (value > 0) {
+					input.classList.remove('text-danger');
+					input.classList.add('text-success');
+				} else {
+					input.classList.add('text-danger');
+					input.classList.remove('text-success');
+				}
+			});
+		});
 
-        updateBonusBtn.addEventListener('click', e => {
-            e.preventDefault();
-            const bonus: { [index: number]: number } = {};
-            bonusInputs.forEach(input => {
-                if (input.value === '') {
-                    input.value = '0';
-                }
-                const value = parseInt(input.value);
-                const id = parseInt(input.dataset.team);
-                bonus[id] = value;
-            });
+		updateBonusBtn.addEventListener('click', e => {
+			e.preventDefault();
+			const bonus: { [index: number]: number } = {};
+			bonusInputs.forEach(input => {
+				if (input.value === '') {
+					input.value = '0';
+				}
+				const value = parseInt(input.value);
+				const id = parseInt(input.dataset.team);
+				bonus[id] = value;
+			});
 
-            startLoading();
-            fetchPost(updateBonusAction, {bonus})
-                .then(() => {
-                    window.location.reload();
-                })
-                .catch(e => {
-                    stopLoading(false);
-                    console.error(e);
-                });
-        });
+			startLoading();
+			fetchPost(updateBonusAction, {bonus})
+				.then(() => {
+					window.location.reload();
+				})
+				.catch(e => {
+					stopLoading(false);
+					console.error(e);
+				});
+		});
 
-        return;
-    }
+		return;
+	}
 
-    const players: Map<number, Player> = new Map();
+	const players: Map<number, Player> = new Map();
 
-    const loadBtn = document.getElementById('load') as HTMLButtonElement;
-    const startBtn = document.getElementById('start') as HTMLButtonElement;
-    const stopBtn = document.getElementById('stop') as HTMLButtonElement;
+	const loadBtn = document.getElementById('load') as HTMLButtonElement;
+	const startBtn = document.getElementById('start') as HTMLButtonElement;
+	const stopBtn = document.getElementById('stop') as HTMLButtonElement;
 
-    let control: Control | null = null;
-    if (isFeatureEnabled('control')) {
-        control = new Control(loadBtn, startBtn, stopBtn);
-    }
+	let control: Control | null = null;
+	if (isFeatureEnabled('control')) {
+		control = new Control(loadBtn, startBtn, stopBtn);
+	}
 
-    // Send form via ajax
-    form.onsubmit = e => {
-        e.preventDefault();
+	// Send form via ajax
+	form.onsubmit = e => {
+		e.preventDefault();
 
-        const data = new FormData(form);
+		const data = new FormData(form);
 
-        console.log(e.submitter);
+		console.log(e.submitter);
 
-        if (!data.get('action')) {
-            data.set('action', (e.submitter as HTMLButtonElement).value)
-        }
+		if (!data.get('action')) {
+			data.set('action', (e.submitter as HTMLButtonElement).value);
+		}
 
-        switch (data.get('action')) {
-            case 'load':
-                loadGame(data);
-                break;
-            case 'start':
-                if (control) {
-                    control.startGame(data, loadStartGame);
-                }
-                break;
-            case 'stop':
-                if (control) {
-                    control.stopGame();
-                }
-                break;
-        }
-    };
+		switch (data.get('action')) {
+			case 'load':
+				loadGame(data);
+				break;
+			case 'start':
+				if (control) {
+					control.startGame(data, loadStartGame);
+				}
+				break;
+			case 'stop':
+				if (control) {
+					control.stopGame();
+				}
+				break;
+		}
+	};
 
-    const checkedVestsRaw: string | null = window.localStorage.getItem('tournamentCheckedVests');
-    let checkedVests = (checkedVestsRaw ?? '').split(',');
-    const availableVestChecks: NodeListOf<HTMLInputElement> = document.querySelectorAll('.available-vests');
-    availableVestChecks.forEach(input => {
-        const vestNum = input.value;
-        input.checked = checkedVestsRaw !== null && checkedVests.includes(vestNum);
+	const checkedVestsRaw: string | null = window.localStorage.getItem('tournamentCheckedVests');
+	let checkedVests = (checkedVestsRaw ?? '').split(',');
+	const availableVestChecks: NodeListOf<HTMLInputElement> = document.querySelectorAll('.available-vests');
+	availableVestChecks.forEach(input => {
+		const vestNum = input.value;
+		input.checked = checkedVestsRaw !== null && checkedVests.includes(vestNum);
 
-        const addCheckedVest = () => {
-            const index = checkedVests.indexOf(vestNum);
-            if (input.checked) {
-                if (index === -1) {
-                    checkedVests.push(vestNum);
-                }
-            } else {
-                if (index > -1) {
-                    delete checkedVests[index];
-                }
-            }
-            checkedVests = checkedVests.filter(value => {
-                return value !== '';
-            });
-            window.localStorage.setItem('tournamentCheckedVests', checkedVests.join(','));
-        }
+		const addCheckedVest = () => {
+			const index = checkedVests.indexOf(vestNum);
+			if (input.checked) {
+				if (index === -1) {
+					checkedVests.push(vestNum);
+				}
+			} else {
+				if (index > -1) {
+					delete checkedVests[index];
+				}
+			}
+			checkedVests = checkedVests.filter(value => {
+				return value !== '';
+			});
+			window.localStorage.setItem('tournamentCheckedVests', checkedVests.join(','));
+		};
 
-        addCheckedVest();
+		addCheckedVest();
 
-        input.addEventListener('change', () => {
-            addCheckedVest();
-            updateAvailableVests();
-        });
-    });
+		input.addEventListener('change', () => {
+			addCheckedVest();
+			updateAvailableVests();
+		});
+	});
 
-    const playersDom = document.querySelectorAll('.player') as NodeListOf<HTMLDivElement>;
-    playersDom.forEach(dom => {
-        const id = parseInt(dom.dataset.id);
-        const player = new Player(id, dom);
-        player.vestSelect.addEventListener('change', updateAvailableVests);
-        players.set(id, player);
-    });
+	const playersDom = document.querySelectorAll('.player') as NodeListOf<HTMLDivElement>;
+	playersDom.forEach(dom => {
+		const id = parseInt(dom.dataset.id);
+		const player = new Player(id, dom);
+		player.vestSelect.addEventListener('change', updateAvailableVests);
+		players.set(id, player);
+	});
 
-    distributeVests();
-    updateAvailableVests();
+	const musicMode = document.getElementById('music-select') as HTMLSelectElement;
+	const $groupMusicModes = document.getElementById('music-mode-grouped') as HTMLInputElement;
+	const $groupMusicModesLabel = document.querySelector('label[for="music-mode-grouped"]');
+	const playlist = document.getElementById('playlist-select') as HTMLSelectElement;
+	const usePlaylist = document.getElementById('playlists') as HTMLInputElement;
 
-    function getAvailableVestsForPlayer(player: Player) {
-        if (selectedVests.length === 0) {
-            players.forEach(playerCheck => {
-                const value = playerCheck.vestSelect.value;
-                if (value !== '') {
-                    selectedVests.push(value);
-                }
-            });
-        }
+	usePlaylist.checked = window.localStorage.getItem('use-playlist') === '1';
+	if (usePlaylist.checked) {
+		playlist.classList.remove('d-none');
+		musicMode.classList.add('d-none');
+		$groupMusicModesLabel.classList.add('d-none');
+	} else {
+		playlist.classList.add('d-none');
+		musicMode.classList.remove('d-none');
+		$groupMusicModesLabel.classList.remove('d-none');
+	}
+	$groupMusicModes.checked = window.localStorage.getItem('group-music-mode') === '1';
+	if ($groupMusicModes.checked) {
+		groupMusicModes();
+	} else {
+		unGroupMusicModes();
+	}
 
-        const availableVests: string[] = [];
-        vests.forEach(vest => {
-            if (!selectedVests.includes(vest.vestNum) && checkedVests.includes(vest.vestNum)) {
-                availableVests.push(vest.vestNum);
-            }
-        });
 
-        if (player.vestSelect.value !== '') {
-            availableVests.push(player.vestSelect.value);
-        }
+	$groupMusicModes.addEventListener('change', () => {
+		window.localStorage.setItem('group-music-mode', $groupMusicModes.checked ? '1' : '0');
+		if ($groupMusicModes.checked) {
+			groupMusicModes();
+		} else {
+			unGroupMusicModes();
+		}
+	});
+	playlist.addEventListener('change', () => {
+		playlist.dispatchEvent(
+			new Event('update', {
+				bubbles: true,
+			}),
+		);
+	});
+	usePlaylist.addEventListener('change', () => {
+		window.localStorage.setItem('use-playlist', usePlaylist.checked ? '1' : '0');
+		if (usePlaylist.checked) {
+			playlist.classList.remove('d-none');
+			musicMode.classList.add('d-none');
+			$groupMusicModesLabel.classList.add('d-none');
+		} else {
+			playlist.classList.add('d-none');
+			musicMode.classList.remove('d-none');
+			$groupMusicModesLabel.classList.remove('d-none');
+		}
+	});
 
-        return availableVests;
-    }
+	distributeVests();
+	updateAvailableVests();
 
-    function distributeVests() {
-        // Unset all selected vests
-        players.forEach(player => {
-            player.vestSelect.value = '';
-        });
+	function groupMusicModes(): void {
+		const value = musicMode.value;
+		musicMode.querySelectorAll('optgroup').forEach(group => {
+			const name = group.label;
+			const musicModes: { [key: string]: string } = {};
+			let selected = false;
+			const newOption = document.createElement('option');
+			group.querySelectorAll('option').forEach(option => {
+				musicModes[option.value] = option.innerText;
+				selected = selected || option.value === value;
+				newOption.setAttribute('data-m' + option.value, option.value);
+			});
+			newOption.value = 'g-' + Object.keys(musicModes).join('-');
+			newOption.classList.add('music-group');
+			newOption.setAttribute('data-music', JSON.stringify(musicModes));
+			newOption.innerText = name;
+			group.replaceWith(newOption);
+			if (selected) {
+				musicMode.value = newOption.value;
+			}
+		});
+	}
 
-        updateAvailableVests();
+	function unGroupMusicModes(): void {
+		const value = musicMode.value;
+		musicMode.querySelectorAll('.music-group').forEach((groupOption: HTMLOptionElement) => {
+			const selected = groupOption.value === value;
+			const groupName = groupOption.innerText;
+			const musicModes: { [key: string]: string } = JSON.parse(groupOption.getAttribute('data-music'));
+			const newOptgroup = document.createElement('optgroup');
+			newOptgroup.label = groupName;
+			Object.entries(musicModes).forEach(([id, name]) => {
+				const option = document.createElement('option');
+				option.value = id;
+				option.innerText = name;
+				newOptgroup.appendChild(option);
+			});
+			groupOption.replaceWith(newOptgroup);
+			if (selected) {
+				const ids = Object.keys(musicModes);
+				musicMode.value = ids[Math.floor(Math.random() * ids.length)];
+			}
+		});
+	}
 
-        const availableVestsWithCount: { [index: number]: [string, number][] } = {};
+	function getAvailableVestsForPlayer(player: Player) {
+		if (selectedVests.length === 0) {
+			players.forEach(playerCheck => {
+				const value = playerCheck.vestSelect.value;
+				if (value !== '') {
+					selectedVests.push(value);
+				}
+			});
+		}
 
-        players.forEach((player, key) => {
-            if (player.sub) {
-                return;
-            }
-            availableVestsWithCount[key] = [];
-            const availableVests: string[] = shuffle(getAvailableVestsForPlayer(player));
-            for (const availableVest of availableVests) {
-                const gamesWithVest = player.vests[availableVest] ?? 0;
+		const availableVests: string[] = [];
+		vests.forEach(vest => {
+			if (!selectedVests.includes(vest.vestNum) && checkedVests.includes(vest.vestNum)) {
+				availableVests.push(vest.vestNum);
+			}
+		});
 
-                if (gamesWithVest === 0) {
-                    player.vestSelect.value = availableVest;
-                    selectedVests.push(availableVest);
-                    return;
-                }
+		if (player.vestSelect.value !== '') {
+			availableVests.push(player.vestSelect.value);
+		}
 
-                availableVestsWithCount[key].push([availableVest, gamesWithVest]);
-            }
-        });
+		return availableVests;
+	}
 
-        players.forEach((player, key) => {
-            if (player.sub || player.vestSelect.value !== '') {
-                return;
-            }
-            availableVestsWithCount[key] = availableVestsWithCount[key].sort((a, b) => {
-                return a[1] - b[1];
-            });
-            console.log(availableVestsWithCount[key]);
-            player.vestSelect.value = availableVestsWithCount[key][0][0];
-            selectedVests.push(player.vestSelect.value);
-        })
-    }
+	function distributeVests() {
+		// Unset all selected vests
+		players.forEach(player => {
+			player.vestSelect.value = '';
+		});
 
-    function updateAvailableVests() {
-        selectedVests = [];
+		updateAvailableVests();
 
-        players.forEach(player => {
-            player.setVestOptions(
-                getAvailableVestsForPlayer(player)
-            );
-        });
-    }
+		const availableVestsWithCount: { [index: number]: [string, number][] } = {};
 
-    function loadGame(data: FormData, callback: null | (() => void) = null): void {
-        startLoading();
-        fetchPost(form.getAttribute('action'), data)
-            .then((response: { status: string, mode?: string }) => {
-                stopLoading();
-                if (!response.mode || response.mode === '') {
-                    console.error('Got invalid mode');
-                    return;
-                }
-                const mode = response.mode;
+		players.forEach((player, key) => {
+			if (player.sub) {
+				return;
+			}
+			availableVestsWithCount[key] = [];
+			const availableVests: string[] = shuffle(getAvailableVestsForPlayer(player));
+			for (const availableVest of availableVests) {
+				const gamesWithVest = player.vests[availableVest] ?? 0;
 
-                if (control) {
-                    control.loadGame(mode, callback);
-                }
-            })
-            .catch(() => {
-                stopLoading(false);
-            });
-    }
+				if (gamesWithVest === 0) {
+					player.vestSelect.value = availableVest;
+					selectedVests.push(availableVest);
+					return;
+				}
 
-    function loadStartGame(data: FormData, callback: null | (() => void) = null): void {
-        startLoading();
-        fetchPost('/', data)
-            .then((response: { status: string, mode?: string }) => {
-                stopLoading();
-                if (!response.mode || response.mode === '') {
-                    console.error('Got invalid mode');
-                    return;
-                }
-                const mode = response.mode;
+				availableVestsWithCount[key].push([availableVest, gamesWithVest]);
+			}
+		});
 
-                if (control) {
-                    control.loadStart(mode, callback);
-                }
-            })
-            .catch(() => {
-                stopLoading(false);
-            });
-    }
+		players.forEach((player, key) => {
+			if (player.sub || player.vestSelect.value !== '') {
+				return;
+			}
+			availableVestsWithCount[key] = availableVestsWithCount[key].sort((a, b) => {
+				return a[1] - b[1];
+			});
+			console.log(availableVestsWithCount[key]);
+			player.vestSelect.value = availableVestsWithCount[key][0][0];
+			selectedVests.push(player.vestSelect.value);
+		});
+	}
+
+	function updateAvailableVests() {
+		selectedVests = [];
+
+		players.forEach(player => {
+			player.setVestOptions(
+				getAvailableVestsForPlayer(player),
+			);
+		});
+	}
+
+	function loadGame(data: FormData, callback: null | (() => void) = null): void {
+		startLoading();
+		fetchPost(form.getAttribute('action'), data)
+			.then((response: { status: string, mode?: string }) => {
+				stopLoading();
+				if (!response.mode || response.mode === '') {
+					console.error('Got invalid mode');
+					return;
+				}
+				const mode = response.mode;
+
+				if (control) {
+					control.loadGame(mode, callback);
+				}
+			})
+			.catch(() => {
+				stopLoading(false);
+			});
+	}
+
+	function loadStartGame(data: FormData, callback: null | (() => void) = null): void {
+		startLoading();
+		fetchPost('/', data)
+			.then((response: { status: string, mode?: string }) => {
+				stopLoading();
+				if (!response.mode || response.mode === '') {
+					console.error('Got invalid mode');
+					return;
+				}
+				const mode = response.mode;
+
+				if (control) {
+					control.loadStart(mode, callback);
+				}
+			})
+			.catch(() => {
+				stopLoading(false);
+			});
+	}
 }
