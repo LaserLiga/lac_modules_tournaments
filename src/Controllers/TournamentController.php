@@ -476,6 +476,7 @@ class TournamentController extends Controller
                 continue;
             }
             $team->setBonus($bonus[$team->tournamentTeam->id] ?? 0);
+            $team->save();
         }
 
         $results->reorder();
