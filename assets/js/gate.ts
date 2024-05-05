@@ -9,7 +9,7 @@ export default class TournamentScreen extends DefaultScreen {
 	}
 
 	animateIn(): void {
-		super.animateOut();
+		super.animateIn();
 
 		const timer = this.content.parentElement.querySelector<HTMLDivElement>('.timer');
 		if (timer) {
