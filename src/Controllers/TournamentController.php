@@ -349,6 +349,9 @@ class TournamentController extends Controller
           'players' => [],
         ];
 
+        /** @var array<int,string> $hashData */
+        $hashData = [];
+
         $usePlaylist = $request->getPost('use-playlist');
         $playlist = $request->getPost('playlist');
 
@@ -418,6 +421,7 @@ class TournamentController extends Controller
                 $teamCounts[$player['team']] = 0;
             }
             $teamCounts[$player['team']]++;
+            $hashData[(int) $player['vest']] = $player['vest'].'-'.$asciiName;
         }
 
         foreach ($teamCounts as $color => $count) {
@@ -428,7 +432,8 @@ class TournamentController extends Controller
         bdump($data['players']);
 
         $data['teams'] = array_values($teamData);
-        $data['meta']['hash'] = md5(json_encode($data['players'], JSON_THROW_ON_ERROR));
+        ksort($hashData);
+        $data['meta']['hash'] = md5($data['meta']['mode'].';'.implode(';', $hashData));
 
         $content = $this->latte->viewToString('gameFiles/evo5', $data);
         $loadDir = LMX_DIR.Info::get('evo5_load_file', 'games/');
