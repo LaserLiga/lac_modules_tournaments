@@ -10,11 +10,11 @@
 {block content}
 	<p>
 		<a href="{link 'tournament', $tournament->id}" class="btn btn-warning">
-			<i class="fa-solid fa-caret-left"></i> {lang 'Zpět'}
+            <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
 		</a>
 	</p>
-	<h2>{lang 'Turnaj'} - {$tournament->name}</h2>
-	<h3>{lang 'Výsledky'}</h3>
+    <h2>{_'Turnaj'} - {$tournament->name}</h2>
+    <h3>{_'Výsledky'}</h3>
 
 	<ul class="nav nav-tabs mt-4" id="results-tabs-control" role="tablist">
 		<li class="nav-item" role="presentation">
@@ -22,7 +22,7 @@
 			   data-bs-target="#summary-tab"
 			   href="#summary-tab"
 			   role="tab" aria-controls="summary-tab" aria-selected="true">
-				{lang 'Celkové'}
+                {_'Celkové'}
 			</a>
 		</li>
 		<li class="nav-item" role="presentation">
@@ -30,7 +30,7 @@
 			   data-bs-target="#individual-tab"
 			   href="#individual-tab"
 			   role="tab" aria-controls="individual-tab" aria-selected="true">
-				{lang 'Individální'}
+                {_'Individální'}
 			</a>
 		</li>
 	</ul>
@@ -42,12 +42,12 @@
 				<thead>
 				<tr>
 					<th></th>
-					<th>{lang 'Tým'}</th>
-					<th>{lang 'Výhry'}</th>
-					<th>{lang 'Remízy'}</th>
-					<th>{lang 'Prohry'}</th>
-					<th>{lang 'Body'}</th>
-					<th>{lang 'Skóre'}</th>
+                    <th>{_'Tým'}</th>
+                    <th>{_'Výhry'}</th>
+                    <th>{_'Remízy'}</th>
+                    <th>{_'Prohry'}</th>
+                    <th>{_'Body'}</th>
+                    <th>{_'Skóre'}</th>
 				</tr>
 				</thead>
 				<tbody>
@@ -71,13 +71,13 @@
 			 tabindex="0">
 			<div class="row">
 				<div class="col-md-6 col-lg-3 pt-4">
-					<h3 class="text-center">{lang 'Nejlepší hráči'}</h3>
+                    <h3 class="text-center">{_'Nejlepší hráči'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-							<th>{lang 'Hráč'}</th>
-							<th>{lang 'Body'}</th>
+                            <th>{_'Hráč'}</th>
+                            <th>{_'Body'}</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -90,13 +90,13 @@
 					</table>
 				</div>
 				<div class="col-md-6 col-lg-3 pt-4">
-					<h3 class="text-center">{lang 'Nejpřesnější hráči'}</h3>
+                    <h3 class="text-center">{_'Nejpřesnější hráči'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-							<th>{lang 'Hráč'}</th>
-							<th>{lang 'Body'}</th>
+                            <th>{_'Hráč'}</th>
+                            <th>{_'Body'}</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -109,13 +109,13 @@
 					</table>
 				</div>
 				<div class="col-md-6 col-lg-3 pt-4">
-					<h3 class="text-center">{lang 'Největší mimoňi'}</h3>
+                    <h3 class="text-center">{_'Největší mimoňi'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-							<th>{lang 'Hráč'}</th>
-							<th>{lang 'Výstřely'}</th>
+                            <th>{_'Hráč'}</th>
+                            <th>{_'Výstřely'}</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -128,13 +128,13 @@
 					</table>
 				</div>
 				<div class="col-md-6 col-lg-3 pt-4">
-					<h3 class="text-center">{lang 'Zabijáci vlastních'}</h3>
+                    <h3 class="text-center">{_'Zabijáci vlastních'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-							<th>{lang 'Hráč'}</th>
-							<th>{lang 'Body'}</th>
+                            <th>{_'Hráč'}</th>
+                            <th>{_'Body'}</th>
 						</tr>
 						</thead>
 						<tbody>

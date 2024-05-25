@@ -81,7 +81,7 @@ class TournamentController extends Controller
         $type = TournamentPresetType::tryFrom($request->getPost('tournament-type', ''));
         if ($type === null) {
             $request->addPassError(lang('Neplatný typ turnaje'));
-            return App::redirect(['tournament', $tournament->id, 'rozlos'], $request);
+            return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
         }
         $tournament->gameLength = (int) $request->getPost('game-length', 15);
         $tournament->gamePause = (int) $request->getPost('game-pause', 5);
@@ -250,13 +250,13 @@ class TournamentController extends Controller
             $progression->save();
         }
         $request->passNotices[] = ['type' => 'success', 'content' => lang('Vygenerováno')];
-        return App::redirect(['tournament', $tournament->id, 'rozlos'], $request);
+        return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
     }
 
     public function rozlosClear(Tournament $tournament, Request $request) : ResponseInterface {
         $this->tournamentProvider->reset($tournament);
         $request->passNotices[] = ['type' => 'success', 'content' => lang('Rozlosování bylo smazáno')];
-        return App::redirect(['tournament', $tournament->id, 'rozlos'], $request);
+        return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
     }
 
     public function sync(Request $request) : ResponseInterface {
@@ -267,7 +267,7 @@ class TournamentController extends Controller
             $request->addPassError(lang('Synchronizace se nezdařila'));
         }
 
-        return App::redirect(['tournament'], $request);
+        return $this->app->redirect(['tournament'], $request);
     }
 
     public function play(Tournament $tournament, ?Game $game = null) : ResponseInterface {
@@ -277,7 +277,7 @@ class TournamentController extends Controller
         }
         if (!isset($game)) {
             $this->request->addPassError(lang('Nebyla nalezena žádná hra'));
-            return App::redirect(['tournament', $tournament->id], $this->request);
+            return $this->app->redirect(['tournament', $tournament->id], $this->request);
         }
 
         $this->params['game'] = $game;
@@ -598,7 +598,7 @@ class TournamentController extends Controller
 
         try {
             if ($tournament->save()) {
-                return App::redirect(['tournament', $tournament->id], $request);
+                return $this->app->redirect(['tournament', $tournament->id], $request);
             }
         } catch (ValidationException $e) {
             $errors[] = $e->getMessage();
@@ -661,7 +661,7 @@ class TournamentController extends Controller
               ]
             );
             $request->passNotices[] = ['type' => 'success', 'content' => lang('Uloženo')];
-            return App::redirect(['tournament', $tournament->id, 'teams'], $request);
+            return $this->app->redirect(['tournament', $tournament->id, 'teams'], $request);
         }
 
         $this->params['tournament'] = $tournament;

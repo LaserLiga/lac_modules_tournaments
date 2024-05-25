@@ -3,24 +3,24 @@
 {varType LAC\Modules\Tournament\Models\Tournament[] $tournaments}
 
 {block content}
-	<h2>{lang 'Odehrané turnaje'}</h2>
+    <h2>{_'Odehrané turnaje'}</h2>
     <nav class="nav nav-pills">
         <div class="nav-item">
             <a href="{link 'tournament', 'sync'}" class="nav-link mx-1 text-bg-primary">
                 <i class="fa-solid fa-rotate"></i>
-                {lang 'Synchronizovat'}
+                {_'Synchronizovat'}
             </a>
         </div>
         <div class="nav-item">
             <a href="{link 'tournament', 'create'}" class="nav-link mx-1 text-bg-success">
                 <i class="fa-solid fa-plus"></i>
-                {lang 'Nový turnaj'}
+                {_'Nový turnaj'}
             </a>
         </div>
         <div class="nav-item">
             <a href="{link 'tournament'}" class="nav-link mx-1 text-bg-info">
                 <i class="fa-solid fa-calendar"></i>
-                {lang 'Plánované turnaje'}
+                {_'Plánované turnaje'}
             </a>
         </div>
     </nav>

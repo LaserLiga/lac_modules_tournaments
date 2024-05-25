@@ -18,7 +18,7 @@ class TournamentResultsScreen extends GateScreen
 	 * @inheritDoc
 	 */
 	public static function getName() : string {
-		return lang('Výsledky turnaje', context: 'gate-screens');
+      return lang('Výsledky turnaje', domain: 'gate', context: 'screens');
 	}
 
 	/**

@@ -6,18 +6,18 @@
 {block content}
 	<p>
 		<a href="{link 'tournament', $tournament->id, 'play'}" class="btn btn-warning">
-			<i class="fa-solid fa-caret-left"></i> {lang 'Zpět'}
+            <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
 		</a>
 	</p>
-	<h2>{lang 'Turnaj'} - {$tournament->name}</h2>
+    <h2>{_'Turnaj'} - {$tournament->name}</h2>
 
 	<table class="table table-striped">
 		<thead>
 		<tr>
-			<th>{lang 'Začátek'}</th>
-			<th>{lang 'Domácí'}</th>
-			<th>{lang 'Hosté'}</th>
-			<th>{lang 'Skupina'}</th>
+            <th>{_'Začátek'}</th>
+            <th>{_'Domácí'}</th>
+            <th>{_'Hosté'}</th>
+            <th>{_'Skupina'}</th>
 			<th></th>
 		</tr>
 		</thead>

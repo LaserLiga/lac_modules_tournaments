@@ -30,7 +30,7 @@ class SettingsController extends Controller
 				return $this->respond(['status' => 'ok']);
 			}
 			$request->passNotices[] = ['type' => 'success', 'content' => lang('Úspěšně uloženo')];
-			return App::redirect(['settings', 'tournament'], $request);
+        return $this->app->redirect(['settings', 'tournament'], $request);
 		}
 
 		if ($request->isAjax()) {
@@ -38,6 +38,6 @@ class SettingsController extends Controller
 		}
 
 		$request->passErrors = $request->errors;
-		return App::redirect(['settings', 'tournament'], $request);
+      return $this->app->redirect(['settings', 'tournament'], $request);
 	}
 }

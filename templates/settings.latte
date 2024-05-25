@@ -2,23 +2,23 @@
 
 {block content}
     <div class="me-4 last-save-wrapper text-end position-fixed end-0">
-        {lang 'Last saved:'} <span class="last-save" data-target="#tournament-settings-form">{lang 'never'}</span>
+        {_'Naposledy uloženo:'} <span class="last-save" data-target="#tournament-settings-form">{_'never'}</span>
     </div>
 
-    <h2>{lang 'Turnaje', context: 'settings'}:</h2>
+    <h2>{_'Turnaje', context: 'settings'}:</h2>
 
     <form action="{link ['settings', 'tournament']}" method="post" class="autosave" id="tournament-settings-form">
         <div class="form-group my-3">
-            <label for="game_mode" class="form-label">{lang 'Turnajový herní mód'}:</label>
+            <label for="game_mode" class="form-label">{_'Turnajový herní mód'}:</label>
             <input type="text" class="form-control" id="game_mode" name="game_mode"
                    value="{\App\Core\Info::get('tournament_game_mode', '0-TEAM_Turnaj')}">
             <div class="form-text">
-                {lang 'Přesný název herního módu, který se bude načítat při spouštění her přes modul turnaje.'}
+                {_'Přesný název herního módu, který se bude načítat při spouštění her přes modul turnaje.'}
             </div>
         </div>
         <p class="text-center">
             <button type="submit" class="btn btn-success">
-                <i class="fa-solid fa-save"></i> {lang 'Uložit', context: 'actions'}
+                <i class="fa-solid fa-save"></i> {_'Uložit', context: 'actions'}
             </button>
         </p>
     </form>

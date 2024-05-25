@@ -9,11 +9,11 @@
 {block content}
     <p>
         <a href="{link 'tournament', $tournament->id}" class="btn btn-warning">
-            <i class="fa-solid fa-caret-left"></i> {lang 'Zpět'}
+            <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
         </a>
     </p>
-    <h2>{lang 'Turnaj'} - {$tournament->name}</h2>
-    <h3>{lang 'Rozlosování'} ({sprintf(lang('Týmů ve hře: %d'), $tournament->teamsInGame)})</h3>
+    <h2>{_'Turnaj'} - {$tournament->name}</h2>
+    <h3>{_'Rozlosování'} ({sprintf(lang('Týmů ve hře: %d'), $tournament->teamsInGame)})</h3>
     {if empty($games)}
         {include clearTournament}
     {else}
@@ -25,7 +25,7 @@
     <form action="{link 'tournament', $tournament->id, 'rozlos'}" method="post" id="rozlos-form"
           data-teams="{count($teams)}" data-teams-in-game="{$tournament->teamsInGame}">
         <div class="form-group my-2">
-            <label for="tournament-type" class="form-label">{lang 'Typ turnaje'}</label>
+            <label for="tournament-type" class="form-label">{_'Typ turnaje'}</label>
             <select name="tournament-type" id="tournament-type" class="form-select">
                 {foreach LAC\Modules\Tournament\Models\TournamentPresetType::cases() as $case}
                     {continueIf !in_array($tournament->teamsInGame, $case->getInGameCompatibility(), true)}
@@ -39,28 +39,28 @@
 
         <div class="form-group my-2">
             <label for="game-repeat" class="form-label">
-                {lang 'Počet vzájemných her'}
+                {_'Počet vzájemných her'}
             </label>
             <input type="number" name="game-repeat" class="form-control" id="game-repeat" min="1"
                    value="{$_POST['game-repeat'] ?? 1}">
         </div>
         <div class="form-group my-2">
             <label for="game-length" class="form-label">
-                {lang 'Délka hry'} ({lang 'v minutách'})
+                {_'Délka hry'} ({_'v minutách'})
             </label>
             <input type="number" name="game-length" class="form-control" id="game-length"
                    value="{$_POST['game-length'] ?? 15}">
         </div>
         <div class="form-group my-2">
             <label for="game-pause" class="form-label">
-                {lang 'Přestávka mezi hrami'} ({lang 'v minutách'})
+                {_'Přestávka mezi hrami'} ({_'v minutách'})
             </label>
             <input type="number" name="game-pause" class="form-control" id="game-pause"
                    value="{$_POST['game-pause'] ?? 5}">
         </div>
         <div class="form-group my-2">
             <label for="tournament-start" class="form-label">
-                {lang 'Čas na začátku turnaje'} ({lang 'v minutách'})
+                {_'Čas na začátku turnaje'} ({_'v minutách'})
             </label>
             <input type="number" name="tournament-start" class="form-control" id="tournament-start"
                    value="{$_POST['tournament-start'] ?? 30}">
@@ -68,12 +68,12 @@
 
         <div class="barrage-args" style="display: none;">
             <div class="form-group my-2 d-none">
-                <label for="barrage-base-games" class="form-label">{lang 'Počet her na tým v základní skupině'}</label>
+                <label for="barrage-base-games" class="form-label">{_'Počet her na tým v základní skupině'}</label>
                 <input type="number" name="args[base_game_count]" class="form-control" id="barrage-base-games"
                        value="{$_POST['args']['base_game_count'] ?? 3}">
             </div>
             <div class="form-group my-2">
-                <label for="barrage-rounds" class="form-label">{lang 'Maximální počet kol baráže'}</label>
+                <label for="barrage-rounds" class="form-label">{_'Maximální počet kol baráže'}</label>
                 <input type="number" name="args[max_barrage_rounds]" class="form-control" id="barrage-rounds"
                        value="{$_POST['args']['max_barrage_rounds'] ?? 4}">
             </div>
@@ -82,47 +82,47 @@
         <hr class="my-5">
 
         <p>
-            {lang 'Týmy'} ({count($teams)}):
+            {_'Týmy'} ({count($teams)}):
             <span n:foreach="$teams as $team" class="badge badge-secondary">{$team->name}</span>
         </p>
-        <p>{lang 'Počet her'}: <span id="tournament-games"></span></p>
-        <p>{lang 'Předpokládaná délka turnaje'}: <span id="tournament-length"></span></p>
-        <p>{lang 'Předpokládaný počet her na tým'}: <span id="tournament-games-per-team"></span></p>
-        <p>{lang 'Předpokládaný čas ve hře na tým'}: <span id="tournament-time-per-team"></span></p>
+        <p>{_'Počet her'}: <span id="tournament-games"></span></p>
+        <p>{_'Předpokládaná délka turnaje'}: <span id="tournament-length"></span></p>
+        <p>{_'Předpokládaný počet her na tým'}: <span id="tournament-games-per-team"></span></p>
+        <p>{_'Předpokládaný čas ve hře na tým'}: <span id="tournament-time-per-team"></span></p>
         <hr class="my-5">
         <p>
-            <button type="submit" class="btn btn-primary">{lang 'Odeslat'}</button>
+            <button type="submit" class="btn btn-primary">{_'Odeslat'}</button>
         </p>
     </form>
 {/define}
 
 {define fullTournament}
-    <div class="alert alert-info">{lang 'Turnaj už byl rozlosován'}</div>
+    <div class="alert alert-info">{_'Turnaj už byl rozlosován'}</div>
     <p>
         <a href="{link 'tournament', $tournament->id, 'rozlos', 'clear'}" class="btn btn-danger">
-            {lang 'Smazat rozlosování'}
+            {_'Smazat rozlosování'}
         </a>
     </p>
     <table class="table table-striped">
         <thead>
         <tr>
             <th></th>
-            <th>{lang 'Začátek'}</th>
+            <th>{_'Začátek'}</th>
             {switch $tournament->teamsInGame}
                 {case 3}
-                <th>{lang 'Tým 1'}</th>
-                <th>{lang 'Tým 2'}</th>
-                <th>{lang 'Tým 3'}</th>
+                <th>{_'Tým 1'}</th>
+                <th>{_'Tým 2'}</th>
+                <th>{_'Tým 3'}</th>
             {case 4}
-                <th>{lang 'Tým 1'}</th>
-                <th>{lang 'Tým 2'}</th>
-                <th>{lang 'Tým 3'}</th>
-                <th>{lang 'Tým 4'}</th>
+                <th>{_'Tým 1'}</th>
+                <th>{_'Tým 2'}</th>
+                <th>{_'Tým 3'}</th>
+                <th>{_'Tým 4'}</th>
             {default}
-                <th>{lang 'Domácí'}</th>
-                <th>{lang 'Hosté'}</th>
+                <th>{_'Domácí'}</th>
+                <th>{_'Hosté'}</th>
             {/switch}
-            <th>{lang 'Skupina'}</th>
+            <th>{_'Skupina'}</th>
         </tr>
         </thead>
         <tbody>
@@ -163,7 +163,7 @@
         </tbody>
         <tfoot>
         <tr>
-            <th>{lang 'Celkem her'}</th>
+            <th>{_'Celkem her'}</th>
             <th n:foreach="$tournament->getTeams() as $team" class="text-center">{$team->getGames()|length}</th>
         </tr>
         </tfoot>

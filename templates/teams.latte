@@ -5,10 +5,10 @@
 {block content}
     <p>
         <a href="{link 'tournament', $tournament->id}" class="btn btn-warning">
-            <i class="fa-solid fa-caret-left"></i> {lang 'Zpět'}
+            <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
         </a>
     </p>
-    <h2>{lang 'Týmy'} - {$tournament->name}</h2>
+    <h2>{_'Týmy'} - {$tournament->name}</h2>
 
     <form action="" id="tournament-teams-form" method="post">
 
@@ -19,8 +19,8 @@
                 <div class="card-body">
                     <div class="form-floating">
                         <input type="text" id="team-name-{$team->id}" class="form-control" required
-                               name="teams[{$team->id}][name]" value="{$team->name}" placeholder="{lang 'Název týmu'}">
-                        <label for="team-name-{$team->id}">{lang 'Název týmu'}</label>
+                               name="teams[{$team->id}][name]" value="{$team->name}" placeholder="{_'Název týmu'}">
+                        <label for="team-name-{$team->id}">{_'Název týmu'}</label>
                     </div>
 
                     <div n:foreach="$team->getPlayers() as $player" class="input-group player">
@@ -29,28 +29,28 @@
                         <div class="form-floating">
                             <input type="text" id="team-player-name-{$team->id}-{$player->id}" class="form-control"
                                    name="teams[{$team->id}][players][{$player->id}][name]" value="{$player->name}"
-                                   placeholder="{lang 'Jméno'}">
-                            <label for="team-player-name-{$team->id}-{$player->id}">{lang 'Jméno'}</label>
+                                   placeholder="{_'Jméno'}">
+                            <label for="team-player-name-{$team->id}-{$player->id}">{_'Jméno'}</label>
                         </div>
                         <div class="form-floating">
                             <input type="text" id="team-player-surname-{$team->id}-{$player->id}" class="form-control"
                                    name="teams[{$team->id}][players][{$player->id}][surname]" value="{$player->surname}"
-                                   placeholder="{lang 'Příjmení'}">
-                            <label for="team-player-surname-{$team->id}-{$player->id}">{lang 'Příjmení'}</label>
+                                   placeholder="{_'Příjmení'}">
+                            <label for="team-player-surname-{$team->id}-{$player->id}">{_'Příjmení'}</label>
                         </div>
                         <div class="form-floating">
                             <input type="text"
                                    id="team-player-nickname-{$team->id}-{$player->id}" n:class="form-control, player-nickname, isset($player->user) ? fw-bold"
                                    name="teams[{$team->id}][players][{$player->id}][nickname]"
-                                   value="{$player->nickname}" placeholder="{lang 'Přezdívka'}">
-                            <label for="team-player-nickname-{$team->id}-{$player->id}">{lang 'Přezdívka'}</label>
+                                   value="{$player->nickname}" placeholder="{_'Přezdívka'}">
+                            <label for="team-player-nickname-{$team->id}-{$player->id}">{_'Přezdívka'}</label>
                         </div>
                         <div class="input-group-text">
                             <div class="form-check">
                                 <input type="checkbox" value="1" class="form-check-input"
                                        id="team-player-sub-{$team->id}-{$player->id}"
                                        name="teams[{$team->id}][players][{$player->id}][sub]" n:attr="checked: $player->sub">
-                                <label for="team-player-sub-{$team->id}-{$player->id}">{lang 'Náhradník'}</label>
+                                <label for="team-player-sub-{$team->id}-{$player->id}">{_'Náhradník'}</label>
                             </div>
                         </div>
                     </div>
@@ -60,10 +60,10 @@
 
         <p class="mt-3 mb-5">
             <button id="addTeam" type="button" class="btn btn-primary btn-lg"><i
-                        class="fa-solid fa-plus"></i> {lang 'Přidat tým'}</button>
+                        class="fa-solid fa-plus"></i> {_'Přidat tým'}</button>
         </p>
         <p class="mt-3 mb-5">
-            <button type="submit" class="btn btn-success btn-lg"><i class="fa-solid fa-save"></i> {lang 'Uložit'}
+            <button type="submit" class="btn btn-success btn-lg"><i class="fa-solid fa-save"></i> {_'Uložit'}
             </button>
         </p>
 
@@ -75,8 +75,8 @@
             <div class="card-body">
                 <div class="form-floating">
                     <input type="text" id="team-name-#" class="form-control"
-                           name="teams[#][name]" value="" placeholder="{lang 'Název týmu'}">
-                    <label for="team-name-#">{lang 'Název týmu'}</label>
+                           name="teams[#][name]" value="" placeholder="{_'Název týmu'}">
+                    <label for="team-name-#">{_'Název týmu'}</label>
                 </div>
 
                 <div n:for="$i = 0; $i < $tournament->teamSize + $tournament->subCount; $i++"
@@ -85,20 +85,20 @@
                     <div class="form-floating">
                         <input type="text" id="team-player-name-#-n{$i}" class="form-control"
                                name="teams[#][players][n{$i}][name]" value=""
-                               placeholder="{lang 'Jméno'}">
-                        <label for="team-player-name-#-n{$i}">{lang 'Jméno'}</label>
+                               placeholder="{_'Jméno'}">
+                        <label for="team-player-name-#-n{$i}">{_'Jméno'}</label>
                     </div>
                     <div class="form-floating">
                         <input type="text" id="team-player-surname-#-n{$i}" class="form-control"
                                name="teams[#][players][n{$i}][surname]" value=""
-                               placeholder="{lang 'Příjmení'}">
-                        <label for="team-player-surname-#-n{$i}">{lang 'Příjmení'}</label>
+                               placeholder="{_'Příjmení'}">
+                        <label for="team-player-surname-#-n{$i}">{_'Příjmení'}</label>
                     </div>
                     <div class="form-floating">
                         <input type="text" id="team-player-nickname-#-n{$i}" class="form-control player-nickname"
                                name="teams[#][players][n{$i}][nickname]"
-                               value="" placeholder="{lang 'Přezdívka'}" required>
-                        <label for="team-player-nickname-#-n{$i}">{lang 'Přezdívka'}</label>
+                               value="" placeholder="{_'Přezdívka'}" required>
+                        <label for="team-player-nickname-#-n{$i}">{_'Přezdívka'}</label>
                     </div>
                     <div class="input-group-text">
                         <div class="form-check">
@@ -106,7 +106,7 @@
                                     n:attr="checked: $i >= $tournament->teamSize"
                                    id="team-player-sub-#-n{$i}"
                                    name="teams[#][players][n{$i}][sub]">
-                            <label for="team-player-sub-#-n{$i}">{lang 'Náhradník'}</label>
+                            <label for="team-player-sub-#-n{$i}">{_'Náhradník'}</label>
                         </div>
                     </div>
                 </div>

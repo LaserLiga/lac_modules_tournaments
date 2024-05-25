@@ -17,46 +17,46 @@
                                        class="btn btn-secondary">
                     <i class="fa-solid fa-caret-left"></i>
                     <span class="d-none d-md-inline">
-					{lang 'Předchozí hra'}
+					{_'Předchozí hra'}
 					</span>
                 </a>
                 {ifset $game->code}
                     <button id="reset-game" type="button" class="btn btn-danger"
                             data-action="{link 'tournament', $tournament->id, 'play', $game->id, 'reset'}"
-                            data-confirm="{lang 'Opravdu chcete hru opakovat?'}">
+                            data-confirm="{_'Opravdu chcete hru opakovat?'}">
                         <i class="fa-solid fa-trash"></i>
-                        {lang 'Opakovat hru', context: 'game.actions'}
+                        {_'Opakovat hru', context: 'game.actions'}
                     </button>
                 {else}
                     <button id="load" type="submit" name="action" value="load" class="btn btn-warning">
                         <i class="fa-solid fa-circle-chevron-up"></i>
                         <span class="d-none d-sm-inline">
-					{lang 'Nahrát hru', context: 'game.actions'}
+					{_'Nahrát hru', context: 'game.actions'}
 					</span>
                     </button>
                     <button id="start" type="submit" name="action" value="start" class="btn btn-success">
                         <i class="fa-solid fa-circle-play"></i>
                         <span class="d-none d-sm-inline">
-					{lang 'Spustit hru', context: 'game.actions'}
+					{_'Spustit hru', context: 'game.actions'}
 					</span>
                     </button>
                     <button id="stop" type="submit" name="action" value="stop" class="btn btn-danger">
                         <i class="fa-solid fa-circle-stop"></i>
                         <span class="d-none d-sm-inline">
-					{lang 'Ukončit hru', context: 'game.actions'}
+					{_'Ukončit hru', context: 'game.actions'}
 					</span>
                     </button>
                 {/ifset}
                 <button type="button" class="btn btn-primary" id="progressTeams"
                         data-action="{link 'tournament', $tournament->id, 'progress'}"
-                        data-alert="{lang 'Postoupeno skupin:'}">
-                    {lang 'Postoupit týmy'}
+                        data-alert="{_'Postoupeno skupin:'}">
+                    {_'Postoupit týmy'}
                 </button>
                 {var LAC\Modules\Tournament\Models\Game|null $nextGame = $game->getNextGame()}
                 <a n:ifset="$nextGame" href="{link 'tournament', $tournament->id, 'play', $nextGame->id}"
                                        class="btn btn-secondary">
 					<span class="d-none d-md-inline">
-					{lang 'Další hra'}
+					{_'Další hra'}
 					</span>
                     <i class="fa-solid fa-caret-right"></i>
                 </a>
@@ -66,15 +66,15 @@
             {var App\GameModels\Game\Game $results = $game->getGame()}
             <section id="results" class="text-center p-3 my-3 rounded border text-dark">
                 {var App\GameModels\Game\Team|null $win = $results->getMode()->getWin($results)}
-                <h4>{lang 'Vítěz'}: {ifset $win}<span
-                        class="text-team-evo5-{$win->color}">{$win->name}</span>{else}{lang 'Remíza'}{/ifset}</h4>
+                <h4>{_'Vítěz'}: {ifset $win}<span
+                        class="text-team-evo5-{$win->color}">{$win->name}</span>{else}{_'Remíza'}{/ifset}</h4>
                 <div id="teams-results" class="d-flex rounded">
                     <div n:foreach="$results->getTeamsSorted() as $team"
                             {varType App\GameModels\Game\Team $team}
                             class="flex-fill bg-team-evo5-{$team->color} p-2 {if $iterator->first}rounded-start{elseif $iterator->last}rounded-end{/if}">
                         <div class="fs-5 fw-bold">{$team->name}</div>
                         <div class="fs-3">{$team->getScore()|number:0,',','&nbsp;'|noescape}</div>
-                        <label for="team-{$team->color}-bonus" class="form-label mt-2 mb-1">{lang 'Bonus/Penalizace'}
+                        <label for="team-{$team->color}-bonus" class="form-label mt-2 mb-1">{_'Bonus/Penalizace'}
                             :</label>
                         <input type="number"
                                class="team-bonus form-control {if $team->bonus > 0}text-success{elseif $team->bonus < 0}text-danger{/if}"
@@ -83,7 +83,7 @@
                     </div>
                 </div>
                 <button data-action="{link 'tournament', $tournament->id, 'play', $game->id, 'bonus'}" type="button"
-                        class="btn btn-success mt-3" id="updateBonus">{lang 'Odeslat'}</button>
+                        class="btn btn-success mt-3" id="updateBonus">{_'Odeslat'}</button>
             </section>
         {/ifset}
 
@@ -91,12 +91,12 @@
             <section id="tournament-settings" class="d-flex justify-content-center flex-wrap mb-3">
                 <div class="music-select-wrapper">
                     <label for="music-select">
-                        {lang 'Hudební mód', context: 'game'}:
+                        {_'Hudební mód', context: 'game'}:
                     </label>
                     <div class="input-group">
                         <input type="checkbox" id="playlists" name="use-playlist" value="1" class="btn-check">
                         <label for="playlists" class="btn btn-outline-info rounded-start" data-toggle="tooltip"
-                               title="{lang 'Playlisty'}">
+                               title="{_'Playlisty'}">
                             <i class="fa-solid fa-music"></i>
                         </label>
                         <select name="playlist" id="playlist-select" class="form-select d-none">
@@ -127,15 +127,15 @@
                         </select>
                         <input type="checkbox" id="music-mode-grouped" value="1" class="btn-check">
                         <label for="music-mode-grouped" class="btn btn-outline-primary" data-toggle="tooltip"
-                               title="{lang 'Slučovat hudební skupiny'}">
+                               title="{_'Slučovat hudební skupiny'}">
                             <i class="fa-solid fa-layer-group"></i>
                         </label>
                         <button type="button" data-bs-toggle="modal" data-bs-target="#music-modes-display"
                                 class="btn btn-info"
-                                data-toggle="tooltip" title="{lang 'Zobrazit přehled hudebních módů'}">
+                                data-toggle="tooltip" title="{_'Zobrazit přehled hudebních módů'}">
                             <i class="fa-solid fa-eye"></i>
                         </button>
-                        <button type="button" data-toggle="shuffle" title="{lang 'Náhodně', context: 'actions'}"
+                        <button type="button" data-toggle="shuffle" title="{_'Náhodně', context: 'actions'}"
                                 data-target="#music-select" class="btn btn-purple-500">
                             <i class="fa-solid fa-shuffle"></i>
                         </button>
@@ -159,7 +159,7 @@
                                 <input type="hidden" name="player[{$player->id}][team]" value="{$teamColors[$key]}">
                                 <input type="hidden" name="player[{$player->id}][name]" value="{$player->nickname}">
                                 <select name="player[{$player->id}][vest]" class="form-select vest-select">
-                                    <option value="">{lang 'Žádná'}</option>
+                                    <option value="">{_'Žádná'}</option>
                                     {if !$player->sub}
                                         <option value="{$vests[$i]->vestNum}" selected>{$vests[$i]->vestNum}</option>
                                         {do $i++}
@@ -172,7 +172,7 @@
             </section>
 
             <section id="availableVests">
-                <h4 class="text-center mt-3">{lang 'Dostupné vesty'}</h4>
+                <h4 class="text-center mt-3">{_'Dostupné vesty'}</h4>
                 <div class="vests d-flex flex-wrap justify-content-center align-items-center">
                     <label n:foreach="$vests as $vest"
                             for="vest-{$vest->vestNum}" class="form-check-label bg-secondary rounded py-1 px-3 m-3"
@@ -195,7 +195,7 @@
 
     <aside id="upcomingGames" class="col-12 col-md-4 col-lg-3 col-xl-2 overflow-y-auto" style="max-height: 650px;">
         {var int $totalGames = count($tournament->getGames())}
-        <p class="text-center">{lang 'Odehráno her:'} {$totalGames-count($upcomingGames)}/{$totalGames}</p>
+        <p class="text-center">{_'Odehráno her:'} {$totalGames-count($upcomingGames)}/{$totalGames}</p>
         <div class="list-group">
             <a n:foreach="$upcomingGames as $upcomingGame"
                     class="list-group-item py-2 list-group-item-action {if $upcomingGame->id === $game->id}active{/if}"

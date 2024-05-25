@@ -26,7 +26,7 @@ class League extends Model
 		if (!isset($this->image)) {
 			return null;
 		}
-		return App::getUrl() . $this->image;
+      return App::getInstance()->getBaseUrl().$this->image;
 	}
 
 	/**
