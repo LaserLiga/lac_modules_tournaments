@@ -71,7 +71,7 @@
                 <div id="teams-results" class="d-flex rounded">
                     <div n:foreach="$results->getTeamsSorted() as $team"
                             {varType App\GameModels\Game\Team $team}
-                            class="flex-fill bg-team-evo5-{$team->color} p-2 {if $iterator->first}rounded-start{elseif $iterator->last}rounded-end{/if}">
+                            class="flex-fill text-bg-team-evo5-{$team->color} p-2 {if $iterator->first}rounded-start{elseif $iterator->last}rounded-end{/if}">
                         <div class="fs-5 fw-bold">{$team->name}</div>
                         <div class="fs-3">{$team->getScore()|number:0,',','&nbsp;'|noescape}</div>
                         <label for="team-{$team->color}-bonus" class="form-label mt-2 mb-1">{_'Bonus/Penalizace'}
@@ -152,7 +152,7 @@
                         <h4 class="text-center text-team-evo5-{$teamColors[$key]}">{$team->getName()}</h4>
                         <div n:ifset="$team->team" class="d-flex justify-content-evenly flex-wrap">
                             <div n:foreach="$team->team->getPlayers() as $player"
-                                    class="player text-center m-2 bg-team-evo5-{$teamColors[$key]} py-2 px-4 rounded"
+                                    class="player text-center m-2 text-bg-team-evo5-{$teamColors[$key]} py-2 px-4 rounded"
                                     data-id="{$player->id}" data-captain="{$player->captain}" data-sub="{$player->sub}"
                                     data-vests="{json_encode($player->getVests())}">
                                 {$player->nickname}
