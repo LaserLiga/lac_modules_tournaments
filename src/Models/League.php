@@ -9,34 +9,33 @@ use Lsr\Core\Models\Model;
 #[PrimaryKey('id_league')]
 class League extends Model
 {
-	use WithPublicId;
+    use WithPublicId;
 
-	public const TABLE = 'leagues';
+    public const TABLE = 'leagues';
 
-	public ?int $idPublic = null;
+    public ?int $idPublic = null;
 
-	public string $name;
-	public ?string $description = null;
-	public ?string $image = null;
+    public string $name;
+    public ?string $description = null;
+    public ?string $image = null;
 
-	/** @var Tournament[] */
-	private array $tournaments = [];
+    /** @var Tournament[] */
+    private array $tournaments = [];
 
-	public function getImageUrl(): ?string {
-		if (!isset($this->image)) {
-			return null;
-		}
-      return App::getInstance()->getBaseUrl().$this->image;
-	}
+    public function getImageUrl(): ?string {
+        if (!isset($this->image)) {
+            return null;
+        }
+        return App::getInstance()->getBaseUrl() . $this->image;
+    }
 
-	/**
-	 * @return Tournament[]
-	 */
-	public function getTournaments(): array {
-		if (empty($this->tournaments)) {
-			$this->tournaments = Tournament::query()->where('id_league = %i AND active = 1', $this->id)->get();
-		}
-		return $this->tournaments;
-	}
-
+    /**
+     * @return Tournament[]
+     */
+    public function getTournaments(): array {
+        if (empty($this->tournaments)) {
+            $this->tournaments = Tournament::query()->where('id_league = %i AND active = 1', $this->id)->get();
+        }
+        return $this->tournaments;
+    }
 }

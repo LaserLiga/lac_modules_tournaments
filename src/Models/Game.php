@@ -13,74 +13,73 @@ use Lsr\Core\Models\Model;
 #[PrimaryKey('id_game')]
 class Game extends Model
 {
-	use WithPublicId;
+    use WithPublicId;
 
-	public const TABLE = 'tournament_games';
+    public const TABLE = 'tournament_games';
 
-	#[ManyToOne]
-	public Tournament $tournament;
+    #[ManyToOne]
+    public Tournament $tournament;
 
-	#[ManyToOne]
-	public ?Group $group;
+    #[ManyToOne]
+    public ?Group $group;
 
-	/** @var Player[] */
-	#[ManyToMany('tournament_game_players', class: Player::class)]
-	public array $players = [];
+    /** @var Player[] */
+    #[ManyToMany('tournament_game_players', class: Player::class)]
+    public array $players = [];
 
-	/** @var GameTeam[] */
-	#[OneToMany(class: GameTeam::class)]
-	public array $teams = [];
+    /** @var GameTeam[] */
+    #[OneToMany(class: GameTeam::class)]
+    public array $teams = [];
 
-	public ?string $code = null;
-	public DateTimeInterface $start;
-	private ?\App\GameModels\Game\Game $game = null;
-	private ?Game $nextGame = null;
-	private ?Game $prevGame = null;
+    public ?string $code = null;
+    public DateTimeInterface $start;
+    private ?\App\GameModels\Game\Game $game = null;
+    private ?Game $nextGame = null;
+    private ?Game $prevGame = null;
 
-	public function hasScores(): bool {
-		return $this->getGame() !== null;
-	}
+    public function hasScores(): bool {
+        return $this->getGame() !== null;
+    }
 
-	public function save(): bool {
-		$success = parent::save();
-		foreach ($this->teams as $team) {
-			$team->save();
-		}
-		foreach ($this->players as $player) {
-			$player->save();
-		}
-		return $success;
-	}
+    public function save(): bool {
+        $success = parent::save();
+        foreach ($this->teams as $team) {
+            $team->save();
+        }
+        foreach ($this->players as $player) {
+            $player->save();
+        }
+        return $success;
+    }
 
-	public function getNextGame(): ?Game {
-		if (!isset($this->nextGame)) {
-			$this->nextGame = $this->tournament->queryGames()->where('[start] > %dt', $this->start)->orderBy('start')->first();
-		}
-		return $this->nextGame;
-	}
+    public function getNextGame(): ?Game {
+        if (!isset($this->nextGame)) {
+            $this->nextGame = $this->tournament->queryGames()->where('[start] > %dt', $this->start)->orderBy('start')->first();
+        }
+        return $this->nextGame;
+    }
 
-	public function getPrevGame(): ?Game {
-		if (!isset($this->prevGame)) {
-			$this->prevGame = $this->tournament->queryGames()->where('[start] < %dt', $this->start)->orderBy('start')->desc()->first();
-		}
-		return $this->prevGame;
-	}
+    public function getPrevGame(): ?Game {
+        if (!isset($this->prevGame)) {
+            $this->prevGame = $this->tournament->queryGames()->where('[start] < %dt', $this->start)->orderBy('start')->desc()->first();
+        }
+        return $this->prevGame;
+    }
 
-	public function getGame(): ?\App\GameModels\Game\Game {
-		if (!isset($this->code)) {
-			return null;
-		}
-		$this->game = GameFactory::getByCode($this->code);
-		return $this->game;
-	}
+    public function getGame(): ?\App\GameModels\Game\Game {
+        if (!isset($this->code)) {
+            return null;
+        }
+        $this->game = GameFactory::getByCode($this->code);
+        return $this->game;
+    }
 
-	public function hasTeam(Team $team): bool {
-		foreach ($this->teams as $checkTeam) {
-			if ($team->id === $checkTeam->team?->id) {
-				return true;
-			}
-		}
-		return false;
-	}
-
+    public function hasTeam(Team $team): bool {
+        foreach ($this->teams as $checkTeam) {
+            if ($team->id === $checkTeam->team?->id) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

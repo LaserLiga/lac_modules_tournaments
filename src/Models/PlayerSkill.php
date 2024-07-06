@@ -9,19 +9,17 @@ namespace LAC\Modules\Tournament\Models;
  */
 enum PlayerSkill: string
 {
+    case BEGINNER = 'BEGINNER';
+    case SOMEWHAT_ADVANCED = 'SOMEWHAT_ADVANCED';
+    case ADVANCED = 'ADVANCED';
+    case PRO = 'PRO';
 
-	case BEGINNER = 'BEGINNER';
-	case SOMEWHAT_ADVANCED = 'SOMEWHAT_ADVANCED';
-	case ADVANCED = 'ADVANCED';
-	case PRO = 'PRO';
-
-	public function getReadable(): string {
-		return match ($this) {
-			self::BEGINNER => 'Začátečník',
-			self::SOMEWHAT_ADVANCED => 'Částečně pokročilý',
-			self::ADVANCED => 'Pokročilý',
-			self::PRO => 'Profík',
-		};
-	}
-
+    public function getReadable(): string {
+        return match ($this) {
+            self::BEGINNER => 'Začátečník',
+            self::SOMEWHAT_ADVANCED => 'Částečně pokročilý',
+            self::ADVANCED => 'Pokročilý',
+            self::PRO => 'Profík',
+        };
+    }
 }

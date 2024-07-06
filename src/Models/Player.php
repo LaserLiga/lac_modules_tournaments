@@ -15,68 +15,67 @@ use Lsr\Core\Models\Model;
 #[PrimaryKey('id_player')]
 class Player extends Model
 {
-	use WithPublicId;
+    use WithPublicId;
 
-	public const TABLE = 'tournament_players';
+    public const TABLE = 'tournament_players';
 
-	public string  $nickname;
-	public ?string $name = null;
-	public ?string $surname = null;
+    public string $nickname;
+    public ?string $name = null;
+    public ?string $surname = null;
 
-	public PlayerSkill $skill = PlayerSkill::BEGINNER;
+    public PlayerSkill $skill = PlayerSkill::BEGINNER;
 
-	public ?string $image = null;
+    public ?string $image = null;
 
-	public bool    $captain   = false;
-	public bool    $sub       = false;
-	#[Email]
-	public ?string $email     = null;
-	public ?string $phone     = null;
-	public ?int    $birthYear = null;
+    public bool $captain   = false;
+    public bool $sub       = false;
+    #[Email]
+    public ?string $email     = null;
+    public ?string $phone     = null;
+    public ?int $birthYear = null;
 
-	#[ManyToOne]
-	public Tournament $tournament;
-	#[ManyToOne]
-	public ?Team      $team = null;
-	#[ManyToOne]
-	public ?LigaPlayer $user = null;
+    #[ManyToOne]
+    public Tournament $tournament;
+    #[ManyToOne]
+    public ?Team $team = null;
+    #[ManyToOne]
+    public ?LigaPlayer $user = null;
 
-	public DateTimeInterface $createdAt;
-	public ?DateTimeInterface $updatedAt = null;
+    public DateTimeInterface $createdAt;
+    public ?DateTimeInterface $updatedAt = null;
 
-	/** @var int[] */
-	private array $vests;
+    /** @var int[] */
+    private array $vests;
 
-	public function insert(): bool {
-		if (!isset($this->createdAt)) {
-			$this->createdAt = new DateTimeImmutable();
-		}
-		return parent::insert();
-	}
+    public function insert(): bool {
+        if (!isset($this->createdAt)) {
+            $this->createdAt = new DateTimeImmutable();
+        }
+        return parent::insert();
+    }
 
-	public function update(): bool {
-		$this->updatedAt = new DateTimeImmutable();
-		return parent::update();
-	}
+    public function update(): bool {
+        $this->updatedAt = new DateTimeImmutable();
+        return parent::update();
+    }
 
-	/**
-	 * @return string|null
-	 */
-	public function getImageUrl(): ?string {
-		if (empty($this->image)) {
-			return null;
-		}
-      return App::getInstance()->getBaseUrl().$this->image;
-	}
+    /**
+     * @return string|null
+     */
+    public function getImageUrl(): ?string {
+        if (empty($this->image)) {
+            return null;
+        }
+        return App::getInstance()->getBaseUrl() . $this->image;
+    }
 
-	public function getVests(): array {
-		if (!isset($this->vests)) {
-			$this->vests = DB::select(\App\GameModels\Game\Evo5\Player::TABLE, '[vest], COUNT(*) as [count]')
-			                 ->where('id_tournament_player = %i', $this->id)
-			                 ->groupBy('vest')
-			                 ->fetchPairs('vest', 'count');
-		}
-		return $this->vests;
-	}
-
+    public function getVests(): array {
+        if (!isset($this->vests)) {
+            $this->vests = DB::select(\App\GameModels\Game\Evo5\Player::TABLE, '[vest], COUNT(*) as [count]')
+                             ->where('id_tournament_player = %i', $this->id)
+                             ->groupBy('vest')
+                             ->fetchPairs('vest', 'count');
+        }
+        return $this->vests;
+    }
 }

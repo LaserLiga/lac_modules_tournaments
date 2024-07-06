@@ -1,9 +1,9 @@
 <?php
 
 return [
-	'parameters' => [
-		'tournament' => [
-			'root' => dirname(__DIR__) . '/',
-		],
-	],
+    'parameters' => [
+        'tournament' => [
+            'root' => dirname(__DIR__) . '/',
+        ],
+    ],
 ];

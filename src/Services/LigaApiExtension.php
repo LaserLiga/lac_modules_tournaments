@@ -9,41 +9,40 @@ use Lsr\Core\Exceptions\ValidationException;
 
 class LigaApiExtension implements LigaApiExtensionInterface
 {
+    private array $tournaments = [];
 
-	private array $tournaments = [];
+    public function __construct(
+        private readonly TournamentProvider $tournamentProvider
+    ) {
+    }
 
-	public function __construct(
-		private readonly TournamentProvider $tournamentProvider
-	) {
-	}
+    /**
+     * @inheritDoc
+     */
+    public function beforeGameSync(string $system, array $games): void {
+        $this->tournaments = [];
+    }
 
-	/**
-	 * @inheritDoc
-	 */
-	public function beforeGameSync(string $system, array $games): void {
-		$this->tournaments = [];
-	}
+    public function processGameBeforeSync(Game $game): void {
+        if (isset($game->tournamentGame)) {
+            $tournament = $game->tournamentGame->tournament;
+            $this->tournaments[$tournament->id] = $tournament;
+        }
+    }
 
-	public function processGameBeforeSync(Game $game): void {
-		if (isset($game->tournamentGame)) {
-			$tournament = $game->tournamentGame->tournament;
-			$this->tournaments[$tournament->id] = $tournament;
-		}
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function afterGameSync(string $system, array $games): void {
-		if (!empty($this->tournaments)) {
-			bdump($this->tournaments);
-			foreach ($this->tournaments as $tournament) {
-				try {
-					$this->tournamentProvider->syncGames($tournament);
-				} catch (JsonException|ValidationException $e) {
-					bdump($e);
-				}
-			}
-		}
-	}
+    /**
+     * @inheritDoc
+     */
+    public function afterGameSync(string $system, array $games): void {
+        if (!empty($this->tournaments)) {
+            bdump($this->tournaments);
+            foreach ($this->tournaments as $tournament) {
+                try {
+                    $this->tournamentProvider->syncGames($tournament);
+                } catch (JsonException | ValidationException $e) {
+                    bdump($e);
+                }
+            }
+        }
+    }
 }
