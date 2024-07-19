@@ -172,7 +172,19 @@
             </section>
 
             <section id="availableVests">
-                <h4 class="text-center mt-3">{_'Dostupné vesty'}</h4>
+                <h4 class="text-center mt-3">
+                    {_'Dostupné vesty'}
+                    <button class="btn btn-primary btn-sm ms-2" id="redistribute-vests">
+                        <i class="fa-solid fa-shuffle"></i>
+                        {_'Přerozdělit', domain: 'tournament', context: 'vests'}
+                    </button>
+                </h4>
+                <div class="text-center">
+                    <label for="all-vests" class="form-check-label rounded bg-secondary py-1 px-3 m-3">
+                        <input type="checkbox" id="all-vests" class="form-check-input">
+                        {_'Všechny', domain: 'tournament', context: 'vests'}
+                    </label>
+                </div>
                 <div class="vests d-flex flex-wrap justify-content-center align-items-center">
                     <label n:foreach="$vests as $vest"
                             for="vest-{$vest->vestNum}" class="form-check-label bg-secondary rounded py-1 px-3 m-3"

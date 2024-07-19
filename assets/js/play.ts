@@ -31,7 +31,7 @@ window.addEventListener('load', () => {
 });
 
 function initContent(form: HTMLFormElement) {
-	let selectedVests: string[] = [];
+	let selectedVests = new Set<string>;
 	const progressTeams = document.getElementById('progressTeams') as HTMLButtonElement;
 	progressTeams.addEventListener('click', () => {
 		startLoading();
@@ -150,27 +150,33 @@ function initContent(form: HTMLFormElement) {
 	};
 
 	const checkedVestsRaw: string | null = window.localStorage.getItem('tournamentCheckedVests');
-	let checkedVests = (checkedVestsRaw ?? '').split(',');
-	const availableVestChecks: NodeListOf<HTMLInputElement> = document.querySelectorAll('.available-vests');
+	let checkedVests = new Set<string>;
+	for (const vest of (checkedVestsRaw ?? '').split(',')) {
+		if (vest === '') {
+			continue;
+		}
+		checkedVests.add(vest);
+	}
+	const allVestsCheck = document.getElementById('all-vests') as HTMLInputElement;
+	const availableVestChecks = document.querySelectorAll<HTMLInputElement>('.available-vests');
+	const redistributeVestsBtn = document.getElementById('redistribute-vests') as HTMLButtonElement;
 	availableVestChecks.forEach(input => {
 		const vestNum = input.value;
-		input.checked = checkedVestsRaw !== null && checkedVests.includes(vestNum);
+
+		if (vestNum === '') {
+			return;
+		}
+
+		input.checked = checkedVestsRaw !== null && checkedVests.has(vestNum);
 
 		const addCheckedVest = () => {
-			const index = checkedVests.indexOf(vestNum);
 			if (input.checked) {
-				if (index === -1) {
-					checkedVests.push(vestNum);
-				}
+				checkedVests.add(vestNum);
 			} else {
-				if (index > -1) {
-					delete checkedVests[index];
-				}
+				checkedVests.delete(vestNum);
 			}
-			checkedVests = checkedVests.filter(value => {
-				return value !== '';
-			});
-			window.localStorage.setItem('tournamentCheckedVests', checkedVests.join(','));
+			allVestsCheck.checked = availableVestChecks.length === checkedVests.size;
+			window.localStorage.setItem('tournamentCheckedVests', Array.from(checkedVests.values()).join(','));
 		};
 
 		addCheckedVest();
@@ -179,6 +185,25 @@ function initContent(form: HTMLFormElement) {
 			addCheckedVest();
 			updateAvailableVests();
 		});
+	});
+	console.log(allVestsCheck, availableVestChecks, checkedVests)
+	// allVestsCheck.checked = availableVestChecks.length === checkedVests.size;
+	allVestsCheck.addEventListener('change', () => {
+		for (const check of availableVestChecks) {
+			const vestNum = check.value;
+			check.checked = allVestsCheck.checked;
+
+			if (check.checked) {
+				checkedVests.add(vestNum);
+			} else {
+				checkedVests.delete(vestNum);
+			}
+		}
+		window.localStorage.setItem('tournamentCheckedVests', Array.from(checkedVests.values()).join(','));
+		updateAvailableVests();
+	});
+	redistributeVestsBtn.addEventListener('click', () => {
+		distributeVests();
 	});
 
 	const playersDom = document.querySelectorAll('.player') as NodeListOf<HTMLDivElement>;
@@ -211,7 +236,6 @@ function initContent(form: HTMLFormElement) {
 	} else {
 		unGroupMusicModes();
 	}
-
 
 	$groupMusicModes.addEventListener('change', () => {
 		window.localStorage.setItem('group-music-mode', $groupMusicModes.checked ? '1' : '0');
@@ -290,18 +314,18 @@ function initContent(form: HTMLFormElement) {
 	}
 
 	function getAvailableVestsForPlayer(player: Player) {
-		if (selectedVests.length === 0) {
+		if (selectedVests.size === 0) {
 			players.forEach(playerCheck => {
 				const value = playerCheck.vestSelect.value;
 				if (value !== '') {
-					selectedVests.push(value);
+					selectedVests.add(value);
 				}
 			});
 		}
 
 		const availableVests: string[] = [];
 		vests.forEach(vest => {
-			if (!selectedVests.includes(vest.vestNum) && checkedVests.includes(vest.vestNum)) {
+			if (!selectedVests.has(vest.vestNum) && checkedVests.has(vest.vestNum)) {
 				availableVests.push(vest.vestNum);
 			}
 		});
@@ -334,7 +358,7 @@ function initContent(form: HTMLFormElement) {
 
 				if (gamesWithVest === 0) {
 					player.vestSelect.value = availableVest;
-					selectedVests.push(availableVest);
+					selectedVests.add(availableVest);
 					return;
 				}
 
@@ -351,12 +375,12 @@ function initContent(form: HTMLFormElement) {
 			});
 			console.log(availableVestsWithCount[key]);
 			player.vestSelect.value = availableVestsWithCount[key][0][0];
-			selectedVests.push(player.vestSelect.value);
+			selectedVests.add(player.vestSelect.value);
 		});
 	}
 
 	function updateAvailableVests() {
-		selectedVests = [];
+		selectedVests.clear();
 
 		players.forEach(player => {
 			player.setVestOptions(
