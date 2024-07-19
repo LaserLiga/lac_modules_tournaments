@@ -12,6 +12,8 @@ use App\Gate\Models\MusicGroupDto;
 use App\Models\Auth\Player as LigaPlayer;
 use App\Models\MusicMode;
 use App\Models\Playlist;
+use App\Tools\GameLoading\GameLoader;
+use App\Tools\GameLoading\LasermaxxGameLoader;
 use DateInterval;
 use DateTimeImmutable;
 use LAC\Modules\Tournament\Models\Game;
@@ -26,22 +28,26 @@ use LAC\Modules\Tournament\Models\TournamentPresetType;
 use LAC\Modules\Tournament\Services\TournamentProvider;
 use Lsr\Core\Caching\Cache;
 use Lsr\Core\Controllers\Controller;
-use Lsr\Core\Exceptions\ModelNotFoundException;
 use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
-use Lsr\Helpers\Tools\Strings;
-use Lsr\Logging\Exceptions\DirectoryCreationException;
 use Psr\Http\Message\ResponseInterface;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\MultiProgression as MultiProgressionRozlos;
 use TournamentGenerator\Progression as ProgressionRozlos;
 
+/**
+ * @phpstan-import-type GameData from LasermaxxGameLoader
+ */
 class TournamentController extends Controller
 {
     public const EVO5_TEAM_COLORS = [0 => 1, 1 => 2, 2 => 0, 3 => 3, 4 => 4, 5 => 5];
 
-    public function __construct(Latte $latte, private readonly TournamentProvider $tournamentProvider) {
+    public function __construct(
+        Latte $latte,
+        private readonly TournamentProvider $tournamentProvider,
+        private readonly GameLoader $gameLoader,
+    ) {
         parent::__construct($latte);
     }
 
@@ -329,47 +335,20 @@ class TournamentController extends Controller
     }
 
     public function playProcess(Tournament $tournament, Game $game, Request $request): ResponseInterface {
-        /** @var array{
-         *   meta:array<string,string|numeric>,
-         *   players:array{vest:int,name:string,vip:bool,team:int,code?:string}[],
-         *   teams:array{key:int,name:string,playerCount:int}
-         *   } $data
-         */
+        /** @var GameData $data */
         $data = [
-          'meta'    => [
-            'mode'            => Info::get('tournament_game_mode', '0-TEAM_Turnaj'),
-            'music'           => $request->getPost('music'),
+          'mode' => Info::get('tournament_game_mode', '0-TEAM_Turnaj'),
+          'music'           => $request->getPost('music'),
+          'meta' => [
             'tournament'      => $tournament->id,
             'tournament_game' => $game->id,
-          ],
-          'players' => [],
+            ],
+          'player' => [],
+          'team' => [],
+          'use-playlist' => $request->getPost('use-playlist'),
+          'playlist' => $request->getPost('playlist'),
         ];
 
-        /** @var array<int,string> $hashData */
-        $hashData = [];
-
-        $usePlaylist = $request->getPost('use-playlist');
-        $playlist = $request->getPost('playlist');
-
-        // Choose random music ID if a group is selected
-        if (!empty($usePlaylist) && !empty($playlist)) {
-            try {
-                $playlist = Playlist::get((int) $data['playlist']);
-                $musicIds = $playlist->getMusicIds();
-                if (!empty($musicIds)) {
-                    $data['meta']['music'] = (int) $musicIds[array_rand($musicIds)];
-                }
-            } catch (ModelNotFoundException | ValidationException) {
-            }
-        }
-        if (isset($data['meta']['music']) && str_starts_with($data['meta']['music'], 'g-')) {
-            $musicIds = array_slice(explode('-', $data['meta']['music']), 1);
-            $data['meta']['music'] = (int) $musicIds[array_rand($musicIds)];
-        }
-
-        /** @var array<numeric-string, int> $teamCounts */
-        $teamCounts = [];
-        $teamData = [];
         /** @var Player[] $playersAll */
         $playersAll = [];
         $key = 0;
@@ -378,16 +357,8 @@ class TournamentController extends Controller
             foreach ($team->team->getPlayers() as $id => $player) {
                 $playersAll[$id] = $player;
             }
-            $asciiName = Strings::toAscii($team->getName());
-            if ($team->getName() !== $asciiName) {
-                $data['meta']['t' . $color . 'n'] = $team->getName();
-            }
             $data['meta']['t' . $color . 'tournament'] = $team->id;
-            $teamData[$color] = [
-              'key'         => $color,
-              'name'        => $asciiName,
-              'playerCount' => 0,
-            ];
+            $data['team'][$color] = ['name' => $team->getName()];
             $key++;
         }
 
@@ -398,61 +369,20 @@ class TournamentController extends Controller
                 continue;
             }
             $player['name'] = trim($player['name']);
-            $asciiName = substr(Strings::toAscii($player['name']), 0, 12);
-            if ($player['name'] !== $asciiName) {
-                $data['meta']['p' . $player['vest'] . 'n'] = $player['name'];
-            }
             $tournamentPlayer = $playersAll[$id];
             $data['meta']['p' . $player['vest'] . 'tournament'] = $tournamentPlayer->id;
-            if (isset($tournamentPlayer->user)) {
-                $data['meta']['p' . $player['vest'] . 'u'] = $tournamentPlayer->user->getCode();
-            }
-            $data['players'][] = [
-              'vest' => $player['vest'],
-              'name' => $asciiName,
+            $data['player'][$player['vest']] = [
+              'name' => $player['name'],
               'team' => $player['team'],
-              'vip'  => false,
             ];
-            if (!isset($teamCounts[$player['team']])) {
-                $teamCounts[$player['team']] = 0;
-            }
-            $teamCounts[$player['team']]++;
-            $hashData[(int) $player['vest']] = $player['vest'] . '-' . $asciiName;
-        }
-
-        foreach ($teamCounts as $color => $count) {
-            $teamData[$color]['playerCount'] = $count;
-        }
-
-        usort($data['players'], static fn($player1, $player2) => ((int) $player1['vest']) - ((int) $player2['vest']));
-        bdump($data['players']);
-
-        $data['teams'] = array_values($teamData);
-        ksort($hashData);
-        $data['meta']['hash'] = md5($data['meta']['mode'] . ';' . implode(';', $hashData));
-
-        $content = $this->latte->viewToString('gameFiles/evo5', $data);
-        $loadDir = LMX_DIR . Info::get('evo5_load_file', 'games/');
-        if (file_exists($loadDir) && is_dir($loadDir)) {
-            file_put_contents($loadDir . '0000.game', $content);
-        }
-
-        if (isset($data['meta']['music'])) {
-            try {
-                $music = MusicMode::get((int) $data['meta']['music']);
-                if (!file_exists($music->fileName)) {
-                    App::getLogger()->warning('Music file does not exist - ' . $music->fileName);
-                } else {
-                    if (!copy($music->fileName, LMX_DIR . 'music/evo5.mp3')) {
-                        App::getLogger()->warning('Music copy failed - ' . $music->fileName);
-                    }
-                }
-            } catch (ModelNotFoundException | ValidationException | DirectoryCreationException) {
-                // Not critical, doesn't need to do anything
+            if (isset($tournamentPlayer->user)) {
+                $data['player'][$player['vest']]['code'] = $tournamentPlayer->user->getCode();
             }
         }
 
-        return $this->respond(['status' => 'ok', 'mode' => $data['meta']['mode']]);
+        $meta = $this->gameLoader->loadGame('evo5', $data);
+
+        return $this->respond(['status' => 'ok', 'mode' => $meta['mode']]);
     }
 
     public function updateBonusScore(Tournament $tournament, Game $game, Request $request): ResponseInterface {
