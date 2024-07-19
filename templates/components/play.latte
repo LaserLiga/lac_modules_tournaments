@@ -155,10 +155,12 @@
                                     class="player text-center m-2 text-bg-team-evo5-{$teamColors[$key]} py-2 px-4 rounded"
                                     data-id="{$player->id}" data-captain="{$player->captain}" data-sub="{$player->sub}"
                                     data-vests="{json_encode($player->getVests())}">
-                                {$player->nickname}
+                                <label for="player-vest-{$player->id}">
+                                    {$player->nickname}
+                                </label>
                                 <input type="hidden" name="player[{$player->id}][team]" value="{$teamColors[$key]}">
                                 <input type="hidden" name="player[{$player->id}][name]" value="{$player->nickname}">
-                                <select name="player[{$player->id}][vest]" class="form-select vest-select">
+                                <select name="player[{$player->id}][vest]" class="form-select vest-select" id="player-vest-{$player->id}">
                                     <option value="">{_'Žádná'}</option>
                                     {if !$player->sub}
                                         <option value="{$vests[$i]->vestNum}" selected>{$vests[$i]->vestNum}</option>

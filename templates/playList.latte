@@ -9,15 +9,15 @@
             <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
 		</a>
 	</p>
-    <h2>{_'Turnaj'} - {$tournament->name}</h2>
+    <h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
 
 	<table class="table table-striped">
 		<thead>
 		<tr>
-            <th>{_'Začátek'}</th>
-            <th>{_'Domácí'}</th>
-            <th>{_'Hosté'}</th>
-            <th>{_'Skupina'}</th>
+            <th>{_'Začátek', domain: 'tournament'}</th>
+            <th>{_'Domácí', domain: 'tournament'}</th>
+            <th>{_'Hosté', domain: 'tournament'}</th>
+            <th>{_'Skupina', domain: 'tournament'}</th>
 			<th></th>
 		</tr>
 		</thead>
@@ -33,8 +33,11 @@
 				{/ifset}
 			</td>
 			<td>{$game->group->name}</td>
-			<td><a href="{link 'tournament', $tournament->id, 'play', $game->id}" class="btn btn-info"><i
-							class="fa-solid fa-eye"></i></a></td>
+			<td>
+                <a href="{link 'tournament', $tournament->id, 'play', $game->id}" class="btn btn-info">
+                    <i class="fa-solid fa-eye"></i>
+                </a>
+            </td>
 		</tr>
 		</tbody>
 	</table>

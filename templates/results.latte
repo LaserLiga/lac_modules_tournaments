@@ -13,8 +13,8 @@
             <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
 		</a>
 	</p>
-    <h2>{_'Turnaj'} - {$tournament->name}</h2>
-    <h3>{_'Výsledky'}</h3>
+    <h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
+    <h3>{_'Výsledky', domain: 'tournament'}</h3>
 
 	<ul class="nav nav-tabs mt-4" id="results-tabs-control" role="tablist">
 		<li class="nav-item" role="presentation">
@@ -22,7 +22,7 @@
 			   data-bs-target="#summary-tab"
 			   href="#summary-tab"
 			   role="tab" aria-controls="summary-tab" aria-selected="true">
-                {_'Celkové'}
+                {_'Celkové', domain: 'tournament'}
 			</a>
 		</li>
 		<li class="nav-item" role="presentation">
@@ -30,7 +30,7 @@
 			   data-bs-target="#individual-tab"
 			   href="#individual-tab"
 			   role="tab" aria-controls="individual-tab" aria-selected="true">
-                {_'Individální'}
+                {_'Individální', domain: 'tournament'}
 			</a>
 		</li>
 	</ul>
@@ -42,12 +42,12 @@
 				<thead>
 				<tr>
 					<th></th>
-                    <th>{_'Tým'}</th>
-                    <th>{_'Výhry'}</th>
-                    <th>{_'Remízy'}</th>
-                    <th>{_'Prohry'}</th>
-                    <th>{_'Body'}</th>
-                    <th>{_'Skóre'}</th>
+                    <th>{_'Tým', domain: 'tournament'}</th>
+                    <th>{_'Výhry', domain: 'tournament'}</th>
+                    <th>{_'Remízy', domain: 'tournament'}</th>
+                    <th>{_'Prohry', domain: 'tournament'}</th>
+                    <th>{_'Body', domain: 'tournament'}</th>
+                    <th>{_'Skóre', domain: 'tournament'}</th>
 				</tr>
 				</thead>
 				<tbody>
@@ -76,8 +76,8 @@
 						<thead>
 						<tr>
 							<th></th>
-                            <th>{_'Hráč'}</th>
-                            <th>{_'Body'}</th>
+                            <th>{_'Hráč', domain: 'tournament'}</th>
+                            <th>{_'Body', domain: 'tournament'}</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -90,13 +90,13 @@
 					</table>
 				</div>
 				<div class="col-md-6 col-lg-3 pt-4">
-                    <h3 class="text-center">{_'Nejpřesnější hráči'}</h3>
+                    <h3 class="text-center">{_'Nejpřesnější hráči', domain: 'tournament'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-                            <th>{_'Hráč'}</th>
-                            <th>{_'Body'}</th>
+                            <th>{_'Hráč', domain: 'tournament'}</th>
+                            <th>{_'Body', domain: 'tournament'}</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -109,13 +109,13 @@
 					</table>
 				</div>
 				<div class="col-md-6 col-lg-3 pt-4">
-                    <h3 class="text-center">{_'Největší mimoňi'}</h3>
+                    <h3 class="text-center">{_'Největší mimoňi', domain: 'tournament'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-                            <th>{_'Hráč'}</th>
-                            <th>{_'Výstřely'}</th>
+                            <th>{_'Hráč', domain: 'tournament'}</th>
+                            <th>{_'Výstřely', domain: 'tournament'}</th>
 						</tr>
 						</thead>
 						<tbody>
@@ -128,13 +128,13 @@
 					</table>
 				</div>
 				<div class="col-md-6 col-lg-3 pt-4">
-                    <h3 class="text-center">{_'Zabijáci vlastních'}</h3>
+                    <h3 class="text-center">{_'Zabijáci vlastních', domain: 'tournament'}</h3>
 					<table class="table table-striped">
 						<thead>
 						<tr>
 							<th></th>
-                            <th>{_'Hráč'}</th>
-                            <th>{_'Body'}</th>
+                            <th>{_'Hráč', domain: 'tournament'}</th>
+                            <th>{_'Body', domain: 'tournament'}</th>
 						</tr>
 						</thead>
 						<tbody>

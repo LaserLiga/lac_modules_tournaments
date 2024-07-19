@@ -5,15 +5,15 @@
         {_'Naposledy uloženo:'} <span class="last-save" data-target="#tournament-settings-form">{_'nikdy'}</span>
     </div>
 
-    <h2>{_'Turnaje', context: 'settings'}:</h2>
+    <h2>{_'Turnaje', domain: 'tournament', context: 'settings'}:</h2>
 
     <form action="{link ['settings', 'tournament']}" method="post" class="autosave" id="tournament-settings-form">
         <div class="form-group my-3">
-            <label for="game_mode" class="form-label">{_'Turnajový herní mód'}:</label>
+            <label for="game_mode" class="form-label">{_'Turnajový herní mód', domain: 'tournament'}:</label>
             <input type="text" class="form-control" id="game_mode" name="game_mode"
                    value="{\App\Core\Info::get('tournament_game_mode', '0-TEAM_Turnaj')}">
             <div class="form-text">
-                {_'Přesný název herního módu, který se bude načítat při spouštění her přes modul turnaje.'}
+                {_'Přesný název herního módu, který se bude načítat při spouštění her přes modul turnaje.', domain: 'tournament'}
             </div>
         </div>
         <p class="text-center">

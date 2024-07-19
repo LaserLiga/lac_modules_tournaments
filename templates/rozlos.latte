@@ -12,8 +12,8 @@
             <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
         </a>
     </p>
-    <h2>{_'Turnaj'} - {$tournament->name}</h2>
-    <h3>{_'Rozlosování'} ({sprintf(lang('Týmů ve hře: %d'), $tournament->teamsInGame)})</h3>
+    <h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
+    <h3>{_'Rozlosování', domain: 'tournament'} ({_'Týmů ve hře: %d', domain: 'tournament', format: [$tournament->teamsInGame]})</h3>
     {if empty($games)}
         {include clearTournament}
     {else}
@@ -25,7 +25,7 @@
     <form action="{link 'tournament', $tournament->id, 'rozlos'}" method="post" id="rozlos-form"
           data-teams="{count($teams)}" data-teams-in-game="{$tournament->teamsInGame}">
         <div class="form-group my-2">
-            <label for="tournament-type" class="form-label">{_'Typ turnaje'}</label>
+            <label for="tournament-type" class="form-label">{_'Typ turnaje', domain: 'tournament'}</label>
             <select name="tournament-type" id="tournament-type" class="form-select">
                 {foreach LAC\Modules\Tournament\Models\TournamentPresetType::cases() as $case}
                     {continueIf !in_array($tournament->teamsInGame, $case->getInGameCompatibility(), true)}
@@ -39,28 +39,28 @@
 
         <div class="form-group my-2">
             <label for="game-repeat" class="form-label">
-                {_'Počet vzájemných her'}
+                {_'Počet vzájemných her', domain: 'tournament'}
             </label>
             <input type="number" name="game-repeat" class="form-control" id="game-repeat" min="1"
                    value="{$_POST['game-repeat'] ?? 1}">
         </div>
         <div class="form-group my-2">
             <label for="game-length" class="form-label">
-                {_'Délka hry'} ({_'v minutách'})
+                {_'Délka hry', domain: 'tournament'} ({_'v minutách', domain: 'tournament', context: 'game_length'})
             </label>
             <input type="number" name="game-length" class="form-control" id="game-length"
                    value="{$_POST['game-length'] ?? 15}">
         </div>
         <div class="form-group my-2">
             <label for="game-pause" class="form-label">
-                {_'Přestávka mezi hrami'} ({_'v minutách'})
+                {_'Přestávka mezi hrami', domain: 'tournament'} ({_'v minutách', domain: 'tournament', context: 'game_length'})
             </label>
             <input type="number" name="game-pause" class="form-control" id="game-pause"
                    value="{$_POST['game-pause'] ?? 5}">
         </div>
         <div class="form-group my-2">
             <label for="tournament-start" class="form-label">
-                {_'Čas na začátku turnaje'} ({_'v minutách'})
+                {_'Čas na začátku turnaje', domain: 'tournament'} ({_'v minutách', domain: 'tournament', context: 'game_length'})
             </label>
             <input type="number" name="tournament-start" class="form-control" id="tournament-start"
                    value="{$_POST['tournament-start'] ?? 30}">
@@ -68,12 +68,12 @@
 
         <div class="barrage-args" style="display: none;">
             <div class="form-group my-2 d-none">
-                <label for="barrage-base-games" class="form-label">{_'Počet her na tým v základní skupině'}</label>
+                <label for="barrage-base-games" class="form-label">{_'Počet her na tým v základní skupině', domain: 'tournament'}</label>
                 <input type="number" name="args[base_game_count]" class="form-control" id="barrage-base-games"
                        value="{$_POST['args']['base_game_count'] ?? 3}">
             </div>
             <div class="form-group my-2">
-                <label for="barrage-rounds" class="form-label">{_'Maximální počet kol baráže'}</label>
+                <label for="barrage-rounds" class="form-label">{_'Maximální počet kol baráže', domain: 'tournament'}</label>
                 <input type="number" name="args[max_barrage_rounds]" class="form-control" id="barrage-rounds"
                        value="{$_POST['args']['max_barrage_rounds'] ?? 4}">
             </div>
@@ -85,10 +85,10 @@
             {_'Týmy'} ({count($teams)}):
             <span n:foreach="$teams as $team" class="badge badge-secondary">{$team->name}</span>
         </p>
-        <p>{_'Počet her'}: <span id="tournament-games"></span></p>
-        <p>{_'Předpokládaná délka turnaje'}: <span id="tournament-length"></span></p>
-        <p>{_'Předpokládaný počet her na tým'}: <span id="tournament-games-per-team"></span></p>
-        <p>{_'Předpokládaný čas ve hře na tým'}: <span id="tournament-time-per-team"></span></p>
+        <p>{_'Počet her', domain: 'tournament'}: <span id="tournament-games"></span></p>
+        <p>{_'Předpokládaná délka turnaje', domain: 'tournament'}: <span id="tournament-length"></span></p>
+        <p>{_'Předpokládaný počet her na tým', domain: 'tournament'}: <span id="tournament-games-per-team"></span></p>
+        <p>{_'Předpokládaný čas ve hře na tým', domain: 'tournament'}: <span id="tournament-time-per-team"></span></p>
         <hr class="my-5">
         <p>
             <button type="submit" class="btn btn-primary">{_'Odeslat'}</button>
@@ -97,32 +97,32 @@
 {/define}
 
 {define fullTournament}
-    <div class="alert alert-info">{_'Turnaj už byl rozlosován'}</div>
+    <div class="alert alert-info">{_'Turnaj už byl rozlosován', domain: 'tournament'}</div>
     <p>
         <a href="{link 'tournament', $tournament->id, 'rozlos', 'clear'}" class="btn btn-danger">
-            {_'Smazat rozlosování'}
+            {_'Smazat rozlosování', domain: 'tournament'}
         </a>
     </p>
     <table class="table table-striped">
         <thead>
         <tr>
             <th></th>
-            <th>{_'Začátek'}</th>
+            <th>{_'Začátek', domain: 'tournament'}</th>
             {switch $tournament->teamsInGame}
                 {case 3}
-                <th>{_'Tým 1'}</th>
-                <th>{_'Tým 2'}</th>
-                <th>{_'Tým 3'}</th>
+                <th>{_'Tým 1', domain: 'tournament'}</th>
+                <th>{_'Tým 2', domain: 'tournament'}</th>
+                <th>{_'Tým 3', domain: 'tournament'}</th>
             {case 4}
-                <th>{_'Tým 1'}</th>
-                <th>{_'Tým 2'}</th>
-                <th>{_'Tým 3'}</th>
-                <th>{_'Tým 4'}</th>
+                <th>{_'Tým 1', domain: 'tournament'}</th>
+                <th>{_'Tým 2', domain: 'tournament'}</th>
+                <th>{_'Tým 3', domain: 'tournament'}</th>
+                <th>{_'Tým 4', domain: 'tournament'}</th>
             {default}
-                <th>{_'Domácí'}</th>
-                <th>{_'Hosté'}</th>
+                <th>{_'Domácí', domain: 'tournament'}</th>
+                <th>{_'Hosté', domain: 'tournament'}</th>
             {/switch}
-            <th>{_'Skupina'}</th>
+            <th>{_'Skupina', domain: 'tournament'}</th>
         </tr>
         </thead>
         <tbody>
@@ -163,7 +163,7 @@
         </tbody>
         <tfoot>
         <tr>
-            <th>{_'Celkem her'}</th>
+            <th>{_'Celkem her', domain: 'tournament'}</th>
             <th n:foreach="$tournament->getTeams() as $team" class="text-center">{$team->getGames()|length}</th>
         </tr>
         </tfoot>
