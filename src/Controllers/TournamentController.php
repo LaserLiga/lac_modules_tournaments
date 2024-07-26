@@ -337,6 +337,7 @@ class TournamentController extends Controller
     public function playProcess(Tournament $tournament, Game $game, Request $request): ResponseInterface {
         /** @var GameData $data */
         $data = [
+          'game-mode' => 1,
           'mode' => Info::get('tournament_game_mode', '0-TEAM_Turnaj'),
           'music'           => $request->getPost('music'),
           'meta' => [
