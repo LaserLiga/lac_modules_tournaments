@@ -2,8 +2,6 @@
 
 namespace LAC\Modules\Tournament\Controllers;
 
-use App\Api\Response\ErrorDto;
-use App\Api\Response\ErrorType;
 use App\GameModels\Game\Evo5\Player;
 use App\Gate\Gate;
 use App\Gate\Models\GateType;
@@ -13,15 +11,16 @@ use LAC\Modules\Tournament\Models\Tournament;
 use Lsr\Core\Controllers\Controller;
 use Lsr\Core\DB;
 use Lsr\Core\Exceptions\ValidationException;
+use Lsr\Core\Requests\Dto\ErrorResponse;
+use Lsr\Core\Requests\Enums\ErrorType;
 use Lsr\Core\Requests\Request;
-use Lsr\Core\Templating\Latte;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 class TournamentResults extends Controller
 {
-    public function __construct(Latte $latte, private readonly Gate $gate) {
-        parent::__construct($latte);
+    public function __construct(private readonly Gate $gate) {
+        parent::__construct();
     }
 
     public function results(Tournament $tournament): ResponseInterface {
@@ -122,13 +121,13 @@ class TournamentResults extends Controller
         $system = $request->getGet('system', 'all');
         $gateType = GateType::getBySlug(empty($gate) ? 'tournament_default' : $gate);
         if (!isset($gateType)) {
-            return $this->respond(new ErrorDto('Gate type not found.', ErrorType::NOT_FOUND, values: ['slug' => $gate]), 404);
+            return $this->respond(new ErrorResponse('Gate type not found.', ErrorType::NOT_FOUND, values: ['slug' => $gate]), 404);
         }
 
         try {
             return $this->gate->getCurrentScreen($gateType, $system)->setParams($this->params)->run();
         } catch (ValidationException | Throwable $e) {
-            return $this->respond(new ErrorDto('An error has occured', exception: $e), 500);
+            return $this->respond(new ErrorResponse('An error has occured', exception: $e), 500);
         }
     }
 }
