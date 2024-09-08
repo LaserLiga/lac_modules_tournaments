@@ -3,14 +3,42 @@ tables:
 		modifications:
 			always:
 				- 'ADD `id_tournament_team` int(10) unsigned DEFAULT NULL AFTER `id_game`'
-				- 'ADD KEY IF NOT EXISTS `id_tournament_team` (`id_tournament_team`)'
-				- 'ADD FOREIGN KEY IF NOT EXISTS (`id_tournament_team`) REFERENCES `tournament_teams` (`id_team`) ON DELETE SET NULL ON UPDATE CASCADE'
+		foreignKeys:
+			-
+				column: 'id_tournament_team'
+				refTable: LAC\Modules\Tournament\Models\Team
+				refColumn: 'id_team'
+				onDelete: 'SET NULL'
 	App\GameModels\Game\Evo5\Player:
 		modifications:
 			always:
 				- 'ADD `id_tournament_player` int(10) unsigned DEFAULT NULL AFTER `id_user`'
-				- 'ADD KEY IF NOT EXISTS `id_tournament_player` (`id_tournament_player`)'
-				- 'ADD FOREIGN KEY IF NOT EXISTS (`id_tournament_player`) REFERENCES `tournament_players` (`id_player`) ON DELETE SET NULL ON UPDATE CASCADE'
+		foreignKeys:
+			-
+				column: 'id_tournament_player'
+				refTable: LAC\Modules\Tournament\Models\Player
+				refColumn: 'id_player'
+				onDelete: 'SET NULL'
+	App\GameModels\Game\Evo6\Team:
+		modifications:
+			always:
+				- 'ADD `id_tournament_team` int(10) unsigned DEFAULT NULL'
+		foreignKeys:
+			-
+				column: 'id_tournament_team'
+				refTable: LAC\Modules\Tournament\Models\Team
+				refColumn: 'id_team'
+				onDelete: 'SET NULL'
+	App\GameModels\Game\Evo6\Player:
+		modifications:
+			always:
+				- 'ADD `id_tournament_player` int(10) unsigned DEFAULT NULL'
+		foreignKeys:
+			-
+				column: 'id_tournament_player'
+				refTable: LAC\Modules\Tournament\Models\Player
+				refColumn: 'id_player'
+				onDelete: 'SET NULL'
 	LAC\Modules\Tournament\Models\League:
 		definition: '''
 		(
@@ -60,6 +88,19 @@ tables:
 			0.2:
 				- 'ADD `points_second` int(11) NOT NULL DEFAULT 2 AFTER `points_draw`'
 				- 'ADD `points_third` int(11) NOT NULL DEFAULT 1 AFTER `points_second`'
+		indexes:
+			-
+				name: 'id_public'
+				columns: ['id_public']
+		foreignKeys:
+			-
+				column: 'id_league'
+				refTable: LAC\Modules\Tournament\Models\League
+				refColumn: 'id_league'
+			-
+				column: 'id_group'
+				refTable: App\Models\GameGroup
+				refColumn: 'id_group'
 	LAC\Modules\Tournament\Models\Group:
 		definition: '''
 		(
@@ -73,6 +114,15 @@ tables:
           CONSTRAINT `tournament_groups_ibfk_1` FOREIGN KEY (`id_tournament`) REFERENCES `tournaments` (`id_tournament`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		indexes:
+			-
+				name: 'id_public'
+				columns: ['id_public']
+		foreignKeys:
+			-
+				column: 'id_tournament'
+				refTable: LAC\Modules\Tournament\Models\Tournament
+				refColumn: 'id_tournament'
 	LAC\Modules\Tournament\Models\Team:
 		definition: '''
 		(
@@ -90,6 +140,15 @@ tables:
           CONSTRAINT `tournament_teams_ibfk_1` FOREIGN KEY (`id_tournament`) REFERENCES `tournaments` (`id_tournament`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		indexes:
+			-
+				name: 'id_public'
+				columns: ['id_public']
+		foreignKeys:
+			-
+				column: 'id_tournament'
+				refTable: LAC\Modules\Tournament\Models\Tournament
+				refColumn: 'id_tournament'
 	LAC\Modules\Tournament\Models\Player:
 		definition: '''
 		(
@@ -120,6 +179,24 @@ tables:
           CONSTRAINT `tournament_players_ibfk_3` FOREIGN KEY (`id_user`) REFERENCES `players` (`id_user`) ON DELETE SET NULL ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         '''
+		indexes:
+			-
+				name: 'id_public'
+				columns: ['id_public']
+		foreignKeys:
+			-
+				column: 'id_tournament'
+				refTable: LAC\Modules\Tournament\Models\Tournament
+				refColumn: 'id_tournament'
+			-
+				column: 'id_team'
+				refTable: LAC\Modules\Tournament\Models\Team
+				refColumn: 'id_team'
+			-
+				column: 'id_user'
+				refTable: App\Models\Auth\Player
+				refColumn: 'id_user'
+				onDelete: 'SET NULL'
 	LAC\Modules\Tournament\Models\Game:
 		definition: '''
 		(
@@ -138,9 +215,23 @@ tables:
           CONSTRAINT `tournament_games_ibfk_2` FOREIGN KEY (`id_group`) REFERENCES `tournament_groups` (`id_group`) ON DELETE SET NULL ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
-		modifications:
-			0.1:
-				- 'ADD INDEX (`code`);'
+		indexes:
+			-
+				name: 'id_public'
+				columns: ['id_public']
+			-
+				name: 'code'
+				columns: ['code']
+		foreignKeys:
+			-
+				column: 'id_tournament'
+				refTable: LAC\Modules\Tournament\Models\Tournament
+				refColumn: 'id_tournament'
+			-
+				column: 'id_group'
+				refTable: LAC\Modules\Tournament\Models\Group
+				refColumn: 'id_group'
+				onDelete: 'SET NULL'
 	tournament_game_teams:
 		definition: '''
 		(
@@ -157,6 +248,15 @@ tables:
           CONSTRAINT `tournament_game_teams_ibfk_2` FOREIGN KEY (`id_team`) REFERENCES `tournament_teams` (`id_team`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		foreignKeys:
+			-
+				column: 'id_game'
+				refTable: LAC\Modules\Tournament\Models\Game
+				refColumn: 'id_game'
+			-
+				column: 'id_team'
+				refTable: LAC\Modules\Tournament\Models\Team
+				refColumn: 'id_team'
 	tournament_game_players:
 		definition: '''
 		(
@@ -173,6 +273,15 @@ tables:
           CONSTRAINT `tournament_game_players_ibfk_2` FOREIGN KEY (`id_player`) REFERENCES `tournament_players` (`id_player`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		foreignKeys:
+			-
+				column: 'id_game'
+				refTable: LAC\Modules\Tournament\Models\Game
+				refColumn: 'id_game'
+			-
+				column: 'id_player'
+				refTable: LAC\Modules\Tournament\Models\Player
+				refColumn: 'id_player'
 	LAC\Modules\Tournament\Models\Progression:
 		definition: '''
 		(
@@ -195,6 +304,19 @@ tables:
           CONSTRAINT `tournament_progressions_ibfk_3` FOREIGN KEY (`id_group_to`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		foreignKeys:
+			-
+				column: 'id_tournament'
+				refTable: LAC\Modules\Tournament\Models\Tournament
+				refColumn: 'id_tournament'
+			-
+				column: 'id_group_from'
+				refTable: LAC\Modules\Tournament\Models\Group
+				refColumn: 'id_group'
+			-
+				column: 'id_group_to'
+				refTable: LAC\Modules\Tournament\Models\Group
+				refColumn: 'id_group'
 	LAC\Modules\Tournament\Models\MultiProgression:
 		definition: '''
 		(
@@ -216,6 +338,15 @@ tables:
           CONSTRAINT `tournament_multi_progressions_ibfk_3` FOREIGN KEY (`id_group_to`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		foreignKeys:
+			-
+				column: 'id_tournament'
+				refTable: LAC\Modules\Tournament\Models\Tournament
+				refColumn: 'id_tournament'
+			-
+				column: 'id_group_to'
+				refTable: LAC\Modules\Tournament\Models\Group
+				refColumn: 'id_group'
 	tournament_multi_progressions_from:
 		definition: '''
 		(
@@ -228,3 +359,12 @@ tables:
           CONSTRAINT `tournament_multi_progressions_from_ibfk_2` FOREIGN KEY (`id_group`) REFERENCES `tournament_groups` (`id_group`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 		'''
+		foreignKeys:
+			-
+				column: 'id_progression'
+				refTable: LAC\Modules\Tournament\Models\MultiProgression
+				refColumn: 'id_progression'
+			-
+				column: 'id_group'
+				refTable: LAC\Modules\Tournament\Models\Group
+				refColumn: 'id_group'
