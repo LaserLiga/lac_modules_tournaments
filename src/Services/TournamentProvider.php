@@ -3,8 +3,8 @@
 namespace LAC\Modules\Tournament\Services;
 
 use App\GameModels\Game\Enums\GameModeType;
-use App\Services\LigaApi;
-use App\Services\PlayerProvider;
+use App\Services\LaserLiga\LigaApi;
+use App\Services\LaserLiga\PlayerProvider;
 use DateTimeImmutable;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
