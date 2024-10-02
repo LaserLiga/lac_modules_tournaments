@@ -15,10 +15,10 @@
 {block content}
 	<p>
 		<a href="{link 'tournament', $tournament->id}" class="btn btn-warning">
-            <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
+            {faSolid 'caret-left'} {_'Zpět'}
 		</a>
 		<a href="{link 'tournament', $tournament->id, 'play', 'list'}" class="btn btn-info">
-            <i class="fa-solid fa-list"></i> {_'Všechny hry'}
+            {faSolid 'list'} {_'Všechny hry'}
 		</a>
 	</p>
     <h2>{_'Turnaj'} - {$tournament->name}</h2>

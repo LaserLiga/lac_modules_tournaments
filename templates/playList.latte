@@ -6,7 +6,7 @@
 {block content}
 	<p>
 		<a href="{link 'tournament', $tournament->id, 'play'}" class="btn btn-warning">
-            <i class="fa-solid fa-caret-left"></i> {_'Zpět'}
+            {faSolid 'caret-left'} {_'Zpět'}
 		</a>
 	</p>
     <h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
@@ -28,14 +28,14 @@
 				{$team->getName()}
 				{ifset $team->score}
 					<br>
-					<i class="fa-solid fa-star"></i>
+					{faSolid 'star'}
 					{$team->score|number:0,',','&nbsp;'|noescape}
 				{/ifset}
 			</td>
 			<td>{$game->group->name}</td>
 			<td>
                 <a href="{link 'tournament', $tournament->id, 'play', $game->id}" class="btn btn-info">
-                    <i class="fa-solid fa-eye"></i>
+                    {faSolid 'eye'}
                 </a>
             </td>
 		</tr>
