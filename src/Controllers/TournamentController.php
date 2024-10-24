@@ -29,6 +29,7 @@ use LAC\Modules\Tournament\Services\TournamentProvider;
 use Lsr\Core\Caching\Cache;
 use Lsr\Core\Controllers\Controller;
 use Lsr\Core\Exceptions\ValidationException;
+use Lsr\Core\Requests\Dto\SuccessResponse;
 use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
 use Psr\Http\Message\ResponseInterface;
@@ -383,7 +384,16 @@ class TournamentController extends Controller
 
         $meta = $this->gameLoader->loadGame('evo5', $data);
 
-        return $this->respond(['status' => 'ok', 'mode' => $meta['mode']]);
+        return $this->respond(
+            new SuccessResponse(
+                values: [
+                      'mode' => $meta['mode'],
+                      'music' => $meta['music'],
+                      'group' => $meta['group'] ?? null,
+                      'groupName' => $meta['groupName'] ?? null
+                    ],
+            )
+        );
     }
 
     public function updateBonusScore(Tournament $tournament, Game $game, Request $request): ResponseInterface {
