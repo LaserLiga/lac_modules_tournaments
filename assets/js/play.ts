@@ -5,6 +5,7 @@ import Control from '../../../../assets/js/pages/newGame/control';
 import {isFeatureEnabled} from '../../../../assets/js/featureConfig';
 import {shuffle} from '../../../../assets/js/includes/functions';
 import {fetchGet, fetchPost} from '../../../../assets/js/includes/apiClient';
+import {triggerNotificationError} from '../../../../assets/js/includes/notifications';
 
 declare global {
 	const vests: {
@@ -41,7 +42,7 @@ function initContent(form: HTMLFormElement) {
 				alert(progressTeams.dataset.alert + ' ' + response.progressed);
 			})
 			.catch(e => {
-				console.error(e);
+				triggerNotificationError(e);
 				stopLoading(false);
 			});
 	});
@@ -60,7 +61,7 @@ function initContent(form: HTMLFormElement) {
 				})
 				.catch(e => {
 					stopLoading(false);
-					console.error(e);
+					triggerNotificationError(e);
 				});
 		});
 
@@ -102,7 +103,7 @@ function initContent(form: HTMLFormElement) {
 				})
 				.catch(e => {
 					stopLoading(false);
-					console.error(e);
+					triggerNotificationError(e);
 				});
 		});
 
@@ -404,7 +405,8 @@ function initContent(form: HTMLFormElement) {
 					control.loadGame(mode, callback);
 				}
 			})
-			.catch(() => {
+			.catch(e => {
+				triggerNotificationError(e);
 				stopLoading(false);
 			});
 	}
@@ -424,7 +426,8 @@ function initContent(form: HTMLFormElement) {
 					control.loadStart(mode, callback);
 				}
 			})
-			.catch(() => {
+			.catch(e => {
+				triggerNotificationError(e);
 				stopLoading(false);
 			});
 	}
