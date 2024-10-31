@@ -74,6 +74,8 @@ tables:
 		  `points_second` int(11) NOT NULL DEFAULT 2,
 		  `points_third` int(11) NOT NULL DEFAULT 1,
           `points_other` varchar(300) NOT NULL DEFAULT '[]',
+		  `game_length` int(10) unsigned NOT NULL DEFAULT 15,
+		  `game_pause` int(10) unsigned NOT NULL DEFAULT 5,
           PRIMARY KEY (`id_tournament`),
           KEY `id_league` (`id_league`),
           KEY `id_public` (`id_public`),
@@ -88,6 +90,9 @@ tables:
 			0.2:
 				- 'ADD `points_second` int(11) NOT NULL DEFAULT 2 AFTER `points_draw`'
 				- 'ADD `points_third` int(11) NOT NULL DEFAULT 1 AFTER `points_second`'
+			0.3:
+				- 'ADD `game_length` int(10) unsigned NOT NULL DEFAULT 15'
+				- 'ADD `game_pause` int(10) unsigned NOT NULL DEFAULT 5'
 		indexes:
 			-
 				name: 'id_public'
