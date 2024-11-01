@@ -69,7 +69,7 @@ class TournamentProvider
 
             // Sync tournaments
             $response = $this->api->get('/api/tournament');
-            /** @var array{id:int,name:string,image:string|null,description:string|null,league:null|array{id:int,name:string},format:string,teamSize:int,subCount:int,active:bool,start:array{date:string,timezone:string},end:null|array{date:string,timezone:string}}[] $tournaments */
+            /** @var array{id:int,name:string,image:string|null,description:string|null,league:null|array{id:int,name:string},format:string,teamSize:int,subCount:int,active:bool,start:array{date:string,timezone:string}|string,end:null|array{date:string,timezone:string}|string}[] $tournaments */
             $tournaments = json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
             foreach ($tournaments as $tournament) {
                 $tournamentLocal = Tournament::getByPublicId($tournament['id']);
@@ -84,9 +84,9 @@ class TournamentProvider
                 $tournamentLocal->teamSize = $tournament['teamSize'];
                 $tournamentLocal->subCount = $tournament['subCount'];
                 $tournamentLocal->active = $tournament['active'];
-                $tournamentLocal->start = new DateTimeImmutable($tournament['start']['date']);
+                $tournamentLocal->start = new DateTimeImmutable(is_string($tournament['start']) ? $tournament['start'] : $tournament['start']['date']);
                 $tournamentLocal->end = isset($tournament['end']) ? new DateTimeImmutable(
-                    $tournament['end']['date']
+                    (is_string($tournament['end']) ? $tournament['end'] : $tournament['end']['date'])
                 ) : null;
                 if (isset($tournament['league']['id'])) {
                     $tournamentLocal->league = League::getByPublicId($tournament['league']['id']);
