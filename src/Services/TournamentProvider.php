@@ -9,6 +9,9 @@ use DateTimeImmutable;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use JsonException;
+use LAC\Modules\Tournament\Dto\ApiLeague;
+use LAC\Modules\Tournament\Dto\ApiTeam;
+use LAC\Modules\Tournament\Dto\ApiTournament;
 use LAC\Modules\Tournament\Models\Game;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
@@ -22,6 +25,7 @@ use Lsr\Core\Caching\Cache;
 use Lsr\Core\DB;
 use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Logging\Logger;
+use Symfony\Component\Serializer\Serializer;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\Group as GeneratorGroup;
 use TournamentGenerator\Team as GeneratorTeam;
@@ -35,6 +39,7 @@ class TournamentProvider
         private readonly LigaApi        $api,
         private readonly PlayerProvider $playerProvider,
         private readonly Cache $cache,
+        private readonly Serializer $serializer,
     ) {
         $this->logger = new Logger(LOG_DIR . 'services/', 'tournaments');
     }
@@ -46,19 +51,19 @@ class TournamentProvider
         // Sync leagues
         try {
             $response = $this->api->get('/api/leagues');
-            /** @var array{id:int,name:string,image:string|null,description:string|null}[] $leagues */
-            $leagues = json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+            /** @var ApiLeague[] $leagues */
+            $leagues = $this->serializer->deserialize($response->getBody(), ApiLeague::class.'[]', 'json');
             $this->logger->debug('Got ' . count($leagues) . ' leagues');
             bdump($leagues);
             foreach ($leagues as $league) {
-                $leagueLocal = League::getByPublicId($league['id']);
+                $leagueLocal = League::getByPublicId($league->id);
                 if (!isset($leagueLocal)) {
                     $leagueLocal = new League();
                 }
-                $leagueLocal->idPublic = $league['id'];
-                $leagueLocal->name = $league['name'];
-                $leagueLocal->description = $league['description'];
-                $leagueLocal->image = $league['image'];
+                $leagueLocal->idPublic = $league->id;
+                $leagueLocal->name = $league->name;
+                $leagueLocal->description = $league->description;
+                $leagueLocal->image = $league->image;
                 $leagueLocal->save();
                 try {
                     $this->logger->debug('Saving league - ' . json_encode($leagueLocal, JSON_THROW_ON_ERROR));
@@ -69,27 +74,25 @@ class TournamentProvider
 
             // Sync tournaments
             $response = $this->api->get('/api/tournament');
-            /** @var array{id:int,name:string,image:string|null,description:string|null,league:null|array{id:int,name:string},format:string,teamSize:int,subCount:int,active:bool,start:array{date:string,timezone:string}|string,end:null|array{date:string,timezone:string}|string}[] $tournaments */
-            $tournaments = json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+            /** @var ApiTournament[] $tournaments */
+            $tournaments = $this->serializer->deserialize($response->getBody(), ApiTournament::class.'[]', 'json');
             foreach ($tournaments as $tournament) {
-                $tournamentLocal = Tournament::getByPublicId($tournament['id']);
+                $tournamentLocal = Tournament::getByPublicId($tournament->id);
                 if (!isset($tournamentLocal)) {
                     $tournamentLocal = new Tournament();
                 }
-                $tournamentLocal->idPublic = $tournament['id'];
-                $tournamentLocal->name = $tournament['name'];
-                $tournamentLocal->description = $tournament['description'];
-                $tournamentLocal->image = $tournament['image'];
-                $tournamentLocal->format = GameModeType::from($tournament['format']);
-                $tournamentLocal->teamSize = $tournament['teamSize'];
-                $tournamentLocal->subCount = $tournament['subCount'];
-                $tournamentLocal->active = $tournament['active'];
-                $tournamentLocal->start = new DateTimeImmutable(is_string($tournament['start']) ? $tournament['start'] : $tournament['start']['date']);
-                $tournamentLocal->end = isset($tournament['end']) ? new DateTimeImmutable(
-                    (is_string($tournament['end']) ? $tournament['end'] : $tournament['end']['date'])
-                ) : null;
-                if (isset($tournament['league']['id'])) {
-                    $tournamentLocal->league = League::getByPublicId($tournament['league']['id']);
+                $tournamentLocal->idPublic = $tournament->id;
+                $tournamentLocal->name = $tournament->name;
+                $tournamentLocal->description = $tournament->description;
+                $tournamentLocal->image = $tournament->image;
+                $tournamentLocal->format = $tournament->format;
+                $tournamentLocal->teamSize = $tournament->teamSize;
+                $tournamentLocal->subCount = $tournament->subCount;
+                $tournamentLocal->active = $tournament->active;
+                $tournamentLocal->start = $tournament->start;
+                $tournamentLocal->end = $tournament->end;
+                if (isset($tournament->league)) {
+                    $tournamentLocal->league = League::getByPublicId($tournament->league->id);
                 }
                 $tournamentLocal->save();
 
@@ -97,43 +100,42 @@ class TournamentProvider
                     '/api/tournament/' . $tournamentLocal->idPublic . '/teams',
                     ['withPlayers' => '1']
                 );
-                /** @var array{id:int,name:string,image:string|null,players:array{id:int,nickname:string,name:string|null,surname:string|null,captain:bool,sub:bool,email:string|null,phone:string|null,skill:string,birthYear:int|null,image:string|null,user:null|array{id:int,nickname:string,code:string,email:string}}[]}[] $teams */
-                $teams = json_decode($response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+                /** @var ApiTeam[] $teams */
+                $teams = $this->serializer->deserialize($response->getBody(), ApiTeam::class.'[]', 'json');
                 foreach ($teams as $team) {
-                    $teamLocal = Team::getByPublicId($team['id']);
+                    $teamLocal = Team::getByPublicId($team->id);
                     if (!isset($teamLocal)) {
                         $teamLocal = new Team();
                     }
-                    $teamLocal->idPublic = $team['id'];
+                    $teamLocal->idPublic = $team->id;
                     $teamLocal->tournament = $tournamentLocal;
-                    $teamLocal->name = $team['name'];
-                    $teamLocal->image = $team['image'];
+                    $teamLocal->name = $team->name;
+                    $teamLocal->image = $team->image;
 
                     $teamLocal->save();
 
-                    /** @var array{id:int,nickname:string,name:string|null,surname:string|null,captain:bool,sub:bool,email:string|null,phone:string|null,skill:string,birthYear:int|null,image:string|null,user:null|array{id:int,nickname:string,code:string,arena:int,email:string,stats:array{rank:int,gamesPlayed:int,arenasPlayed:int},connections:array{type:string,identifier:string}[]}} $player */
-                    foreach ($team['players'] as $player) {
-                        $playerLocal = Player::getByPublicId($player['id']);
+                    foreach ($team->players as $player) {
+                        $playerLocal = Player::getByPublicId($player->id);
                         if (!isset($playerLocal)) {
                             $playerLocal = new Player();
                         }
-                        $playerLocal->idPublic = $player['id'];
+                        $playerLocal->idPublic = $player->id;
                         $playerLocal->tournament = $tournamentLocal;
                         $playerLocal->team = $teamLocal;
-                        $playerLocal->nickname = $player['nickname'];
-                        $playerLocal->name = $player['name'];
-                        $playerLocal->surname = $player['surname'];
-                        $playerLocal->email = $player['email'];
-                        $playerLocal->phone = $player['phone'];
-                        $playerLocal->birthYear = $player['birthYear'];
-                        $playerLocal->image = $player['image'];
-                        $playerLocal->skill = PlayerSkill::from($player['skill']);
-                        $playerLocal->captain = $player['captain'];
-                        $playerLocal->sub = $player['sub'];
+                        $playerLocal->nickname = $player->nickname;
+                        $playerLocal->name = $player->name;
+                        $playerLocal->surname = $player->surname;
+                        $playerLocal->email = $player->email;
+                        $playerLocal->phone = $player->phone;
+                        $playerLocal->birthYear = $player->birthYear;
+                        $playerLocal->image = $player->image;
+                        $playerLocal->skill = $player->skill;
+                        $playerLocal->captain = $player->captain;
+                        $playerLocal->sub = $player->sub;
 
-                        if (isset($player['user'])) {
+                        if (isset($player->user)) {
                             $this->logger->debug(
-                                'Player #' . $player['id'] . ' user - ' . json_encode(
+                                'Player #' . $player->id . ' user - ' . json_encode(
                                     $player['user'],
                                     JSON_THROW_ON_ERROR
                                 )
