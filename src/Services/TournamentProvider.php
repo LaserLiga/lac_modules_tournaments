@@ -141,7 +141,7 @@ class TournamentProvider
                             $this->logger->debug(
                                 'Player #' . $player->id . ' user - ' . $this->serializer->serialize($player->user, 'json')
                             );
-                            $playerLocal->user = $this->playerProvider->getPlayerObjectFromData($player['user']);
+                            $playerLocal->user = $this->playerProvider->getPlayerObjectFromData($player->user);
                         }
 
                         $playerLocal->save();
