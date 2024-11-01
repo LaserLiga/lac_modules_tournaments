@@ -115,6 +115,10 @@ class TournamentProvider
                     $teamLocal->save();
 
                     foreach ($team->players as $player) {
+                        if (!isset($player->id)) {
+                            $this->logger->error('Invalid Player object - '.$this->serializer->serialize($player, 'json'));
+                            continue;
+                        }
                         $playerLocal = Player::getByPublicId($player->id);
                         if (!isset($playerLocal)) {
                             $playerLocal = new Player();
