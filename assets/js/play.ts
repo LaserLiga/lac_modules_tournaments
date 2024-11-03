@@ -6,6 +6,7 @@ import {isFeatureEnabled} from '../../../../assets/js/featureConfig';
 import {shuffle} from '../../../../assets/js/includes/functions';
 import {fetchGet, fetchPost} from '../../../../assets/js/includes/apiClient';
 import {triggerNotificationError} from '../../../../assets/js/includes/notifications';
+import {LoadGameResponse} from '../../../../assets/js/api/endpoints/games';
 
 declare global {
 	const vests: {
@@ -393,13 +394,13 @@ function initContent(form: HTMLFormElement) {
 	function loadGame(data: FormData, callback: null | (() => void) = null): void {
 		startLoading();
 		fetchPost(form.getAttribute('action'), data)
-			.then((response: { status: string, mode?: string }) => {
+			.then((response: LoadGameResponse) => {
 				stopLoading();
-				if (!response.mode || response.mode === '') {
+				if (!response.values.mode || response.values.mode === '') {
 					console.error('Got invalid mode');
 					return;
 				}
-				const mode = response.mode;
+				const mode = response.values.mode;
 
 				if (control) {
 					control.loadGame(mode, callback);
@@ -414,13 +415,13 @@ function initContent(form: HTMLFormElement) {
 	function loadStartGame(data: FormData, callback: null | (() => void) = null): void {
 		startLoading();
 		fetchPost('/', data)
-			.then((response: { status: string, mode?: string }) => {
+			.then((response: LoadGameResponse) => {
 				stopLoading();
-				if (!response.mode || response.mode === '') {
+				if (!response.values.mode || response.values.mode === '') {
 					console.error('Got invalid mode');
 					return;
 				}
-				const mode = response.mode;
+				const mode = response.values.mode;
 
 				if (control) {
 					control.loadStart(mode, callback);
