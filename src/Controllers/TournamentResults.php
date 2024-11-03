@@ -125,7 +125,12 @@ class TournamentResults extends Controller
         }
 
         try {
-            return $this->gate->getCurrentScreen($gateType, $system)->setParams($this->params)->run();
+            $screen = $this->gate
+              ->getCurrentScreen($gateType, $system)
+              ->setParams($this->params);
+            return $screen->run()
+                          ->withAddedHeader('X-Screen', $screen::getDiKey())
+                          ->withAddedHeader('X-Trigger', $screen->getTrigger()?->value ?? 'none');
         } catch (ValidationException | Throwable $e) {
             return $this->respond(new ErrorResponse('An error has occured', exception: $e), 500);
         }
