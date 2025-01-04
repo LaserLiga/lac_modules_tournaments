@@ -4,7 +4,7 @@ namespace LAC\Modules\Tournament\Models;
 
 use Dibi\Row;
 use JsonException;
-use Lsr\Core\Models\Interfaces\InsertExtendInterface;
+use Lsr\Orm\Interfaces\InsertExtendInterface;
 
 class TournamentPoints implements InsertExtendInterface
 {

@@ -3,15 +3,15 @@
 namespace LAC\Modules\Tournament\Models;
 
 use App\Core\App;
-use Lsr\Core\Models\Attributes\PrimaryKey;
-use Lsr\Core\Models\Model;
+use Lsr\Orm\Attributes\NoDB;
+use Lsr\Orm\Attributes\PrimaryKey;
 
 #[PrimaryKey('id_league')]
-class League extends Model
+class League extends \App\Models\BaseModel
 {
     use WithPublicId;
 
-    public const TABLE = 'leagues';
+    public const string TABLE = 'leagues';
 
     public ?int $idPublic = null;
 
@@ -20,7 +20,15 @@ class League extends Model
     public ?string $image = null;
 
     /** @var Tournament[] */
-    private array $tournaments = [];
+    #[NoDB]
+    public array $tournaments = [] {
+        get {
+            if (empty($this->tournaments)) {
+                $this->tournaments = Tournament::query()->where('id_league = %i AND active = 1', $this->id)->get();
+            }
+            return $this->tournaments;
+        }
+    }
 
     public function getImageUrl(): ?string {
         if (!isset($this->image)) {
@@ -29,13 +37,4 @@ class League extends Model
         return App::getInstance()->getBaseUrl() . $this->image;
     }
 
-    /**
-     * @return Tournament[]
-     */
-    public function getTournaments(): array {
-        if (empty($this->tournaments)) {
-            $this->tournaments = Tournament::query()->where('id_league = %i AND active = 1', $this->id)->get();
-        }
-        return $this->tournaments;
-    }
 }

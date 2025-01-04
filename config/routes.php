@@ -6,7 +6,9 @@ use LAC\Modules\Tournament\Controllers\TournamentController;
 use LAC\Modules\Tournament\Controllers\TournamentResults;
 use Lsr\Core\Routing\Route;
 
-$tournamentGroup = Route::group('tournament')
+/** @var \Lsr\Core\Routing\Router $this */
+
+$tournamentGroup = $this->group('tournament')
     ->get('', [TournamentController::class, 'index'])
     ->name('tournaments')
     ->get('create', [TournamentController::class, 'create'])
@@ -36,14 +38,14 @@ $tournamentGroup->group('{id}')
                 ->post('bonus', [TournamentController::class, 'updateBonusScore'])
                 ->post('reset', [TournamentController::class, 'resetGame']);
 
-Route::group('api/tournament')
+$this->group('api/tournament')
     ->get('/', [Tournaments::class, 'getAll'])
     ->get('/{id}', [Tournaments::class, 'get'])
     ->post('/sync', [Tournaments::class, 'sync'])
     ->post('/{id}/sync/games', [Tournaments::class, 'syncGames'])
     ->post('/{id}/recalc', [Tournaments::class, 'recalculatePoints']);
 
-Route::group('settings/tournament')
+$this->group('settings/tournament')
      ->get('', [SettingsController::class, 'tournaments'])
      ->name('settings-tournament')
      ->post('', [SettingsController::class, 'saveTournament']);

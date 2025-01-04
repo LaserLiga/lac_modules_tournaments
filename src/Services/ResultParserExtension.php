@@ -11,7 +11,7 @@ use LAC\Modules\Tournament\Models\Game as TournamentGame;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
 use LAC\Modules\Tournament\Models\Tournament;
-use Lsr\Core\Exceptions\ModelNotFoundException;
+use Lsr\Orm\Exceptions\ModelNotFoundException;
 
 class ResultParserExtension implements ResultParserExtensionInterface
 {
@@ -33,7 +33,7 @@ class ResultParserExtension implements ResultParserExtensionInterface
 
                 /** @var GameTeam[] $positions */
                 $positions = [];
-                foreach ($game->getTeams() as $team) {
+                foreach ($game->teams as $team) {
                     foreach ($game->tournamentGame->teams as $gameTeam) {
                         if (((int)($meta['t' . $team->color . 'tournament'] ?? 0)) !== $gameTeam->id) {
                             continue;
@@ -85,7 +85,7 @@ class ResultParserExtension implements ResultParserExtensionInterface
                     }
                 }
 
-                foreach ($game->getPlayers() as $player) {
+                foreach ($game->players as $player) {
                     if (empty($meta['p' . $player->vest . 'tournament'])) {
                         continue;
                     }

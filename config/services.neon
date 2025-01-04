@@ -2,9 +2,9 @@ includes:
 	- ./services.php
 parameters:
 	tournament:
-	routing:
-		routeFiles:
-			- %tournament.root%config/routes.php
+routing:
+	routeFiles:
+		- %tournament.root%config/routes.php
 services:
 	tournament.module:
 		type: LAC\Modules\Tournament\Tournament

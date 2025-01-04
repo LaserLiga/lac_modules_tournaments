@@ -2,20 +2,23 @@
 
 namespace LAC\Modules\Tournament\Models;
 
-use DateTimeImmutable;
-use DateTimeInterface;
-use Lsr\Core\DB;
-use Lsr\Core\Exceptions\ValidationException;
-use Lsr\Core\Models\Attributes\ManyToOne;
-use Lsr\Core\Models\Attributes\PrimaryKey;
-use Lsr\Core\Models\Model;
+use App\Models\BaseModel;
+use Lsr\Db\DB;
+use Lsr\ObjectValidation\Exceptions\ValidationException;
+use Lsr\Orm\Attributes\NoDB;
+use Lsr\Orm\Attributes\PrimaryKey;
+use Lsr\Orm\Attributes\Relations\ManyToOne;
+use Lsr\Orm\ModelTraits\WithCreatedAt;
+use Lsr\Orm\ModelTraits\WithUpdatedAt;
 
 #[PrimaryKey('id_team')]
-class Team extends Model
+class Team extends BaseModel
 {
     use WithPublicId;
+    use WithUpdatedAt;
+    use WithCreatedAt;
 
-    public const TABLE = 'tournament_teams';
+    public const string TABLE = 'tournament_teams';
 
     public string $name;
 
@@ -25,71 +28,117 @@ class Team extends Model
 
     #[ManyToOne]
     public Tournament $tournament;
-    public DateTimeInterface $createdAt;
-    public ?DateTimeInterface $updatedAt = null;
-    /** @var Player[] */
-    private array $players = [];
 
-    private int $score;
-    private int $wins;
-    private int $draws;
-    private int $losses;
+    /** @var Player[] */
+    #[NoDB]
+    public array $players = [] {
+        get {
+            if (empty($this->players)) {
+                $this->players = Player::query()->where('id_team = %i', $this->id)->get();
+            }
+            return $this->players;
+        }
+    }
+
+    #[NoDB]
+    public int $score {
+        get {
+            if (!isset($this->score)) {
+                $this->score = DB::select(GameTeam::TABLE, 'SUM([score])')
+                                 ->where('[id_team] = %i', $this->id)
+                                 ->fetchSingle(
+                                   false
+                                 ) ?? 0;
+            }
+            return $this->score;
+        }
+    }
+    #[NoDB]
+    public int $wins {
+        get {
+            if (!isset($this->wins)) {
+                $this->wins = DB::select(GameTeam::TABLE, 'COUNT(*)')->where(
+                  '[id_team] = %i AND [points] = %i',
+                  $this->id,
+                  $this->tournament->points->win
+                )->fetchSingle(false) ?? 0;
+            }
+            return $this->wins;
+        }
+    }
+    #[NoDB]
+    public int $draws {
+        get {
+            if (!isset($this->draws)) {
+                $this->draws = DB::select(GameTeam::TABLE, 'COUNT(*)')->where(
+                  '[id_team] = %i AND [points] = %i',
+                  $this->id,
+                  $this->tournament->points->draw
+                )->fetchSingle(false) ?? 0;
+            }
+            return $this->draws;
+        }
+    }
+
+    #[NoDB]
+    public int $losses {
+        get {
+            if (!isset($this->losses)) {
+                $this->losses = DB::select(GameTeam::TABLE, 'COUNT(*)')->where(
+                  '[id_team] = %i AND [points] = %i',
+                  $this->id,
+                  $this->tournament->points->loss
+                )->fetchSingle(false) ?? 0;
+            }
+            return $this->losses;
+        }
+    }
     /**
      * @var array<int,int>
      */
-    private array $keys;
-
-    /** @var Game[] */
-    private array $games = [];
-
-    public function getScore(): int {
-        if (!isset($this->score)) {
-            $this->score = DB::select(GameTeam::TABLE, 'SUM([score])')->where('[id_team] = %i', $this->id)->fetchSingle(false) ?? 0;
+    #[NoDB]
+    public array $groupKeys {
+        get {
+            $this->groupKeys ??= DB::select([GameTeam::TABLE, 'a'], 'b.id_group, a.key')->join(Game::TABLE, 'b')->on(
+              'a.id_game = b.id_game'
+            )->where('a.id_team = %i', $this->id)->groupBy('id_group')->fetchPairs('id_group', 'key', false);
+            return $this->groupKeys;
         }
-        return $this->score;
     }
 
-    public function getScoreForGroup(Group $group): int {
-        $gameIds = array_map(static fn(Game $game) => $game->id, $group->getGames());
+    /** @var Game[] */
+    #[NoDB]
+    public array $games = [] {
+        get {
+            if (empty($this->games)) {
+                foreach ($this->tournament->getGames() as $game) {
+                    if ($game->hasTeam($this)) {
+                        $this->games[] = $game;
+                    }
+                }
+            }
+            return $this->games;
+        }
+    }
+
+    public function getScoreForGroup(Group $group) : int {
+        $gameIds = array_map(static fn(Game $game) => $game->id, $group->games);
         return DB::select(GameTeam::TABLE, 'SUM([score])')
                  ->where('[id_team] = %i AND [id_game] IN %in', $this->id, $gameIds)
                  ->fetchSingle(false) ?? 0;
     }
 
-    public function getPointsForGroup(Group $group): int {
-        $gameIds = array_map(static fn(Game $game) => $game->id, $group->getGames());
+    public function getPointsForGroup(Group $group) : int {
+        $gameIds = array_map(static fn(Game $game) => $game->id, $group->games);
         return DB::select(GameTeam::TABLE, 'SUM([points])')
                  ->where('[id_team] = %i AND [id_game] IN %in', $this->id, $gameIds)
                  ->fetchSingle(false) ?? 0;
     }
 
-    public function insert(): bool {
-        if (!isset($this->createdAt)) {
-            $this->createdAt = new DateTimeImmutable();
-        }
-        return parent::insert();
-    }
-
-    public function update(): bool {
-        $this->updatedAt = new DateTimeImmutable();
-        return parent::update();
-    }
-
-    /**
-     * @return Player[]
-     * @throws ValidationException
-     */
-    public function getPlayers(): array {
-        if (empty($this->players)) {
-            $this->players = Player::query()->where('id_team = %i', $this->id)->get();
-        }
-        return $this->players;
-    }
-
     /**
      * @return string|null
      */
-    public function getImageUrl(): ?string {
+    public function getImageUrl() : ?string {
         if (empty($this->image)) {
             return null;
         }
@@ -97,65 +146,12 @@ class Team extends Model
     }
 
     /**
-     * @return int
-     */
-    public function getWins(): int {
-        if (!isset($this->wins)) {
-            $this->wins = DB::select(GameTeam::TABLE, 'COUNT(*)')->where('[id_team] = %i AND [points] = %i', $this->id, $this->tournament->points->win)->fetchSingle(false) ?? 0;
-        }
-        return $this->wins;
-    }
-
-    /**
-     * @return int
-     */
-    public function getLosses(): int {
-        if (!isset($this->losses)) {
-            $this->losses = DB::select(GameTeam::TABLE, 'COUNT(*)')->where('[id_team] = %i AND [points] = %i', $this->id, $this->tournament->points->loss)->fetchSingle(false) ?? 0;
-        }
-        return $this->losses;
-    }
-
-    /**
-     * @return int
-     */
-    public function getDraws(): int {
-        if (!isset($this->draws)) {
-            $this->draws = DB::select(GameTeam::TABLE, 'COUNT(*)')->where('[id_team] = %i AND [points] = %i', $this->id, $this->tournament->points->draw)->fetchSingle(false) ?? 0;
-        }
-        return $this->draws;
-    }
-
-    /**
-     * @return array<int,int>
-     */
-    public function getGroupKeys(): array {
-        $this->keys ??= DB::select([GameTeam::TABLE, 'a'], 'b.id_group, a.key')->join(Game::TABLE, 'b')->on('a.id_game = b.id_game')->where('a.id_team = %i', $this->id)->groupBy('id_group')->fetchPairs('id_group', 'key', false);
-        return $this->keys;
-    }
-
-    /**
      * @return Game[]
      * @throws ValidationException
      */
-    public function getGames(): array {
-        if (empty($this->games)) {
-            foreach ($this->tournament->getGames() as $game) {
-                if ($game->hasTeam($this)) {
-                    $this->games[] = $game;
-                }
-            }
-        }
-        return $this->games;
-    }
-
-    /**
-     * @return Game[]
-     * @throws ValidationException
-     */
-    public function getGamesAgainst(Team $team): array {
+    public function getGamesAgainst(Team $team) : array {
         $games = [];
-        foreach ($this->getGames() as $game) {
+        foreach ($this->games as $game) {
             if ($game->hasTeam($team)) {
                 $games[] = $game;
             }

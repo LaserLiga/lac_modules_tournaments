@@ -2,10 +2,8 @@
 
 namespace LAC\Modules\Tournament\Services;
 
-use App\GameModels\Game\Enums\GameModeType;
 use App\Services\LaserLiga\LigaApi;
 use App\Services\LaserLiga\PlayerProvider;
-use DateTimeImmutable;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use JsonException;
@@ -17,14 +15,13 @@ use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
 use LAC\Modules\Tournament\Models\League;
 use LAC\Modules\Tournament\Models\Player;
-use LAC\Modules\Tournament\Models\PlayerSkill;
 use LAC\Modules\Tournament\Models\Team;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Models\TournamentPresetType;
-use Lsr\Core\Caching\Cache;
-use Lsr\Core\DB;
-use Lsr\Core\Exceptions\ValidationException;
+use Lsr\Caching\Cache;
+use Lsr\Db\DB;
 use Lsr\Logging\Logger;
+use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Symfony\Component\Serializer\Serializer;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\Group as GeneratorGroup;
@@ -116,7 +113,9 @@ class TournamentProvider
 
                     foreach ($team->players as $player) {
                         if (!isset($player->id)) {
-                            $this->logger->error('Invalid Player object - '.$this->serializer->serialize($player, 'json'));
+                            $this->logger->error(
+                              'Invalid Player object - '.$this->serializer->serialize($player, 'json')
+                            );
                             continue;
                         }
                         $playerLocal = Player::getByPublicId($player->id);
@@ -213,7 +212,7 @@ class TournamentProvider
                 'name'     => $group->name,
             ];
         }
-        foreach ($tournament->getTeams() as $team) {
+        foreach ($tournament->teams as $team) {
             $data['teams'][] = [
                 'id_local' => $team->id,
                 'id_public' => $team->idPublic,
@@ -309,7 +308,7 @@ class TournamentProvider
      */
     public function createTournamentFromPreset(TournamentPresetType $type, Tournament $tournament, int $iterations = 1, array $args = []): TournamentGenerator {
         $tournamentRozlos = new TournamentGenerator();
-        foreach ($tournament->getTeams() as $team) {
+        foreach ($tournament->teams as $team) {
             $tournamentRozlos->team($team->name, $team->id);
         }
 
@@ -322,7 +321,7 @@ class TournamentProvider
                 $tournamentRozlos->splitTeams();
                 break;
             case TournamentPresetType::TWO_GROUPS_ROBIN:
-                $half = (int)floor(count($tournament->getTeams()) / 4);
+                $half = (int) floor(count($tournament->teams) / 4);
                 $round1 = $tournamentRozlos->round(lang('Kvalifikace'));
                 $round2 = $tournamentRozlos->round(lang('Finále'));
                 $groupA = $round1->group('A');
@@ -336,7 +335,7 @@ class TournamentProvider
                 $tournamentRozlos->splitTeams($round1);
                 break;
             case TournamentPresetType::TWO_GROUPS_ROBIN_10:
-                $half = (int)floor(count($tournament->getTeams()) / 4);
+                $half = (int) floor(count($tournament->teams) / 4);
                 $round1 = $tournamentRozlos->round(lang('Kvalifikace'));
                 $round2 = $tournamentRozlos->round(lang('Finále'));
                 $groupA = $round1->group('A');
@@ -396,7 +395,7 @@ class TournamentProvider
      * @post $tournamentRozlos object will be populated with generated games.
      */
     private function prepareGamesBarrage(Tournament $tournament, TournamentGenerator $tournamentRozlos, int $baseGameCount = 3, int $maxBarrageRounds = 4): void {
-        $teams = $tournamentRozlos->getTeams();
+        $teams = $tournamentRozlos->teams->get();
         shuffle($teams);
 
         // Initialize team counters
@@ -606,7 +605,7 @@ class TournamentProvider
     }
 
     private function prepareTwoGroupsGamesBarrage(Tournament $tournament, TournamentGenerator $tournamentRozlos, int $baseGameCount = 3, int $maxBarrageRounds = 4): void {
-        $teams = $tournamentRozlos->getTeams();
+        $teams = $tournamentRozlos->teams->get();
         shuffle($teams);
 
         $baseRound = $tournamentRozlos->round(lang('Základní skupina', context: 'tournament'));
@@ -626,7 +625,7 @@ class TournamentProvider
             $teamGames = [];
             /** @var array<int|string,array<int|string,int>> $teamGamesWithTeams */
             $teamGamesWithTeams = [];
-            foreach ($baseGroup->getTeams() as $team) {
+            foreach ($baseGroup->teams as $team) {
                 $teamIds[$team->getId()] = $team;
                 $teamGames[$team->getId()] = 0;
                 $teamGamesWithTeams[$team->getId()] = [];
@@ -808,8 +807,8 @@ class TournamentProvider
             // Get all progressions from this group
             $group = Group::get($groupRozlos->getId());
             $progressions = array_merge(
-                $group->getProgressionsFrom(),
-                $group->getMultiProgressionsFrom()
+              $group->progressionsFrom,
+              $group->multiProgressionsFrom
             );
             foreach ($progressions as $progression) {
                 $progressionRozlos = $progression->progression;
@@ -860,7 +859,7 @@ class TournamentProvider
             $progressed++;
 
             // Update group's teams
-            foreach ($groupRozlos->getTeams() as $teamRozlos) {
+            foreach ($groupRozlos->teams as $teamRozlos) {
                 $team = Team::get($teamRozlos->getId());
                 if (!isset($team)) {
                     continue;
@@ -887,7 +886,7 @@ class TournamentProvider
             ->setPlay($tournament->gameLength)
             ->setGameWait($tournament->gamePause);
         $teams = [];
-        foreach ($tournament->getTeams() as $team) {
+        foreach ($tournament->teams as $team) {
             $teams[$team->id] = $tournamentGenerator->team($team->name, $team->id);
         }
 
@@ -911,8 +910,8 @@ class TournamentProvider
                                                         ->setThirdPoints($tournament->points->third)
                                                         ->setLostPoints($tournament->points->loss);
 
-            foreach ($group->getGames() as $game) {
-                if (count(array_filter($game->teams, static fn($team) => isset($team->team))) < 2) {
+            foreach ($group->games as $game) {
+                if (count($game->teams->filter(static fn($team) => isset($team->team))) < 2) {
                     continue; // Skip planned games without any teams
                 }
                 $gameTeams = [];
@@ -936,7 +935,7 @@ class TournamentProvider
                 }
             }
 
-            foreach ($group->getTeams() as $team) {
+            foreach ($group->teams as $team) {
                 if (!isset($teams[$team->id]->groupResults[$group->id])) {
                     continue;
                 }
@@ -960,7 +959,7 @@ class TournamentProvider
 
             // Check if not already progressed
             $keys = $progression->getKeys();
-            foreach ($progression->to->getGames() as $game) {
+            foreach ($progression->to as $game) {
                 foreach ($game->teams as $team) {
                     if (!isset($team->team) || !in_array($team->key, $keys, true)) {
                         continue;
@@ -997,7 +996,7 @@ class TournamentProvider
             )->setPoints($progression->points);
             // Check if not already progressed
             $keys = $progression->getKeys();
-            foreach ($progression->to->getGames() as $game) {
+            foreach ($progression->to as $game) {
                 foreach ($game->teams as $team) {
                     if (!isset($team->team) || !in_array($team->key, $keys, true)) {
                         continue;
@@ -1019,7 +1018,7 @@ class TournamentProvider
     }
 
     public function recalcTeamPoints(Tournament $tournament): void {
-        $teams = $tournament->getTeams();
+        $teams = $tournament->teams;
         $progressions = $tournament->getProgressions();
         /** @var array<int,int> $points Sum points for games for each team */
         $points = DB::select(GameTeam::TABLE, 'id_team, SUM(points) as points')->groupBy('id_team')->fetchPairs(
@@ -1031,7 +1030,7 @@ class TournamentProvider
             $team->points = $points[$team->id] ?? 0;
 
             // Check progressions
-            $keys = $team->getGroupKeys();
+            $keys = $team->groupKeys;
             foreach ($progressions as $progression) {
                 $progressionKeys = $progression->getKeys();
                 if (in_array($keys[$progression->to->id] ?? null, $progressionKeys, true)) {

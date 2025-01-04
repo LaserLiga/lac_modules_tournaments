@@ -1,11 +1,14 @@
 <?php
+
 declare(strict_types=1);
+
 namespace LAC\Modules\Tournament\Dto;
 
 use App\Api\DataObjects\LigaPlayer\LigaPlayerData;
 use LAC\Modules\Tournament\Models\PlayerSkill;
 
-class ApiPlayer {
+class ApiPlayer
+{
     public int $id;
     public string $nickname;
     public ?string $name = null;

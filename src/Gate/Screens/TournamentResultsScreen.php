@@ -32,7 +32,7 @@ class TournamentResultsScreen extends GateScreen
      */
     public function run(): ResponseInterface {
         $tournament = $this->getTournament();
-        $teams = $tournament->getTeams();
+        $teams = $tournament->teams;
         usort(
             $teams,
             static function (Team $a, Team $b) {
@@ -40,7 +40,7 @@ class TournamentResultsScreen extends GateScreen
                 if ($diff !== 0) {
                     return $diff;
                 }
-                return $b->getScore() - $a->getScore();
+                return $b->score - $a->score;
             }
         );
 

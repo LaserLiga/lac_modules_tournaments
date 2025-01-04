@@ -9,11 +9,11 @@ use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
 use LAC\Modules\Tournament\Models\Team;
 use LAC\Modules\Tournament\Models\Tournament;
 use Lsr\Core\Controllers\Controller;
-use Lsr\Core\DB;
-use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Core\Requests\Dto\ErrorResponse;
 use Lsr\Core\Requests\Enums\ErrorType;
 use Lsr\Core\Requests\Request;
+use Lsr\Db\DB;
+use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
@@ -25,7 +25,7 @@ class TournamentResults extends Controller
 
     public function results(Tournament $tournament): ResponseInterface {
         $this->params['tournament'] = $tournament;
-        $this->params['teams'] = $tournament->getTeams();
+        $this->params['teams'] = $tournament->teams;
         $this->params['games'] = $tournament->getGames();
 
         usort(
@@ -35,7 +35,7 @@ class TournamentResults extends Controller
                 if ($diff !== 0) {
                     return $diff;
                 }
-                return $b->getScore() - $a->getScore();
+                return $b->score - $a->score;
             }
         );
 
@@ -46,7 +46,7 @@ class TournamentResults extends Controller
 
         $playerIds = [];
         foreach ($this->params['teams'] as $team) {
-            foreach ($team->getPlayers() as $player) {
+            foreach ($team->players as $player) {
                 $playerIds[] = $player->id;
             }
         }

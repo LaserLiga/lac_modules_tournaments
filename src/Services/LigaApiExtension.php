@@ -5,7 +5,7 @@ namespace LAC\Modules\Tournament\Services;
 use App\GameModels\Game\Game;
 use JsonException;
 use LAC\Modules\Core\LigaApiExtensionInterface;
-use Lsr\Core\Exceptions\ValidationException;
+use Lsr\ObjectValidation\Exceptions\ValidationException;
 
 class LigaApiExtension implements LigaApiExtensionInterface
 {

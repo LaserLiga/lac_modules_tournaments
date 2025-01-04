@@ -130,7 +130,7 @@
             <th>{$iterator->counter}.</th>
             <td>{$game->start->format('H:i')}</td>
             <td n:foreach="$game->teams as $team">
-                {$team->getName()}
+				{$team->name}
             </td>
             <td>{$game->group->name}</td>
         </tr>
@@ -141,13 +141,13 @@
         <thead>
         <tr>
             <th></th>
-            <th n:foreach="$tournament->getTeams() as $team" class="text-center">{$team->name}</th>
+			<th n:foreach="$tournament->teams as $team" class="text-center">{$team->name}</th>
         </tr>
         </thead>
         <tbody>
-        <tr n:foreach="$tournament->getTeams() as $team">
+		<tr n:foreach="$tournament->teams as $team">
             <th>{$team->name}</th>
-            {foreach $tournament->getTeams() as $team2}
+			{foreach $tournament->teams as $team2}
                 {if $team->id !== $team2->id}
                     {var int $count = count($team->getGamesAgainst($team2))}
                     <td n:class="$count === 1 ? text-bg-primary, $count > 1 ? text-bg-warning, text-center">
@@ -164,7 +164,7 @@
         <tfoot>
         <tr>
             <th>{_'Celkem her', domain: 'tournament'}</th>
-            <th n:foreach="$tournament->getTeams() as $team" class="text-center">{$team->getGames()|length}</th>
+			<th n:foreach="$tournament->teams as $team" class="text-center">{$team->games|length}</th>
         </tr>
         </tfoot>
     </table>

@@ -25,7 +25,7 @@
 		<tr n:foreach="$games as $game">
 			<td>{$game->start->format('H:i')}</td>
 			<td n:foreach="$game->teams as $team">
-				{$team->getName()}
+				{$team->name}
 				{ifset $team->score}
 					<br>
 					{faSolid 'star'}

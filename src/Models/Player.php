@@ -4,20 +4,23 @@ namespace LAC\Modules\Tournament\Models;
 
 use App\Core\App;
 use App\Models\Auth\Player as LigaPlayer;
-use DateTimeImmutable;
-use DateTimeInterface;
-use Lsr\Core\DB;
-use Lsr\Core\Models\Attributes\ManyToOne;
-use Lsr\Core\Models\Attributes\PrimaryKey;
-use Lsr\Core\Models\Attributes\Validation\Email;
-use Lsr\Core\Models\Model;
+use App\Models\BaseModel;
+use Lsr\Db\DB;
+use Lsr\ObjectValidation\Attributes\Email;
+use Lsr\Orm\Attributes\NoDB;
+use Lsr\Orm\Attributes\PrimaryKey;
+use Lsr\Orm\Attributes\Relations\ManyToOne;
+use Lsr\Orm\ModelTraits\WithCreatedAt;
+use Lsr\Orm\ModelTraits\WithUpdatedAt;
 
 #[PrimaryKey('id_player')]
-class Player extends Model
+class Player extends BaseModel
 {
     use WithPublicId;
+    use WithUpdatedAt;
+    use WithCreatedAt;
 
-    public const TABLE = 'tournament_players';
+    public const string TABLE = 'tournament_players';
 
     public string $nickname;
     public ?string $name = null;
@@ -27,11 +30,11 @@ class Player extends Model
 
     public ?string $image = null;
 
-    public bool $captain   = false;
-    public bool $sub       = false;
+    public bool $captain = false;
+    public bool $sub = false;
     #[Email]
-    public ?string $email     = null;
-    public ?string $phone     = null;
+    public ?string $email = null;
+    public ?string $phone = null;
     public ?int $birthYear = null;
 
     #[ManyToOne]
@@ -41,41 +44,29 @@ class Player extends Model
     #[ManyToOne]
     public ?LigaPlayer $user = null;
 
-    public DateTimeInterface $createdAt;
-    public ?DateTimeInterface $updatedAt = null;
 
     /** @var int[] */
-    private array $vests;
-
-    public function insert(): bool {
-        if (!isset($this->createdAt)) {
-            $this->createdAt = new DateTimeImmutable();
+    #[NoDB]
+    public array $vests {
+        get {
+            if (!isset($this->vests)) {
+                $this->vests = DB::select(\App\GameModels\Game\Evo5\Player::TABLE, '[vest], COUNT(*) as [count]')
+                                 ->where('id_tournament_player = %i', $this->id)
+                                 ->groupBy('vest')
+                                 ->fetchPairs('vest', 'count');
+            }
+            return $this->vests;
         }
-        return parent::insert();
-    }
-
-    public function update(): bool {
-        $this->updatedAt = new DateTimeImmutable();
-        return parent::update();
     }
 
     /**
      * @return string|null
      */
-    public function getImageUrl(): ?string {
+    public function getImageUrl() : ?string {
         if (empty($this->image)) {
             return null;
         }
-        return App::getInstance()->getBaseUrl() . $this->image;
+        return App::getInstance()->getBaseUrl().$this->image;
     }
 
-    public function getVests(): array {
-        if (!isset($this->vests)) {
-            $this->vests = DB::select(\App\GameModels\Game\Evo5\Player::TABLE, '[vest], COUNT(*) as [count]')
-                             ->where('id_tournament_player = %i', $this->id)
-                             ->groupBy('vest')
-                             ->fetchPairs('vest', 'count');
-        }
-        return $this->vests;
-    }
 }

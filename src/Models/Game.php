@@ -3,19 +3,21 @@
 namespace LAC\Modules\Tournament\Models;
 
 use App\GameModels\Factory\GameFactory;
+use App\Models\BaseModel;
 use DateTimeInterface;
-use Lsr\Core\Models\Attributes\ManyToMany;
-use Lsr\Core\Models\Attributes\ManyToOne;
-use Lsr\Core\Models\Attributes\OneToMany;
-use Lsr\Core\Models\Attributes\PrimaryKey;
-use Lsr\Core\Models\Model;
+use Lsr\Orm\Attributes\NoDB;
+use Lsr\Orm\Attributes\PrimaryKey;
+use Lsr\Orm\Attributes\Relations\ManyToMany;
+use Lsr\Orm\Attributes\Relations\ManyToOne;
+use Lsr\Orm\Attributes\Relations\OneToMany;
+use Lsr\Orm\ModelCollection;
 
 #[PrimaryKey('id_game')]
-class Game extends Model
+class Game extends BaseModel
 {
     use WithPublicId;
 
-    public const TABLE = 'tournament_games';
+    public const string TABLE = 'tournament_games';
 
     #[ManyToOne]
     public Tournament $tournament;
@@ -23,25 +25,58 @@ class Game extends Model
     #[ManyToOne]
     public ?Group $group;
 
-    /** @var Player[] */
+    /** @var ModelCollection<Player> */
     #[ManyToMany('tournament_game_players', class: Player::class)]
-    public array $players = [];
+    public ModelCollection $players;
 
-    /** @var GameTeam[] */
+    /** @var ModelCollection<GameTeam> */
     #[OneToMany(class: GameTeam::class)]
-    public array $teams = [];
+    public ModelCollection $teams;
 
     public ?string $code = null;
     public DateTimeInterface $start;
-    private ?\App\GameModels\Game\Game $game = null;
-    private ?Game $nextGame = null;
-    private ?Game $prevGame = null;
 
-    public function hasScores(): bool {
-        return $this->getGame() !== null;
+    #[NoDB]
+    public ?\App\GameModels\Game\Game $game = null {
+        get {
+            if (!isset($this->code)) {
+                return null;
+            }
+            $this->game = GameFactory::getByCode($this->code);
+            return $this->game;
+        }
+    }
+    #[NoDB]
+    public ?Game $nextGame = null {
+        get {
+            if (!isset($this->nextGame)) {
+                $this->nextGame = $this->tournament->queryGames()
+                                                   ->where('[start] > %dt', $this->start)
+                                                   ->orderBy('start')
+                                                   ->first();
+            }
+            return $this->nextGame;
+        }
+    }
+    #[NoDB]
+    public ?Game $prevGame = null {
+        get {
+            if (!isset($this->prevGame)) {
+                $this->prevGame = $this->tournament->queryGames()
+                                                   ->where('[start] < %dt', $this->start)
+                                                   ->orderBy('start')
+                                                   ->desc()
+                                                   ->first();
+            }
+            return $this->prevGame;
+        }
     }
 
-    public function save(): bool {
+    public function hasScores() : bool {
+        return $this->game !== null;
+    }
+
+    public function save() : bool {
         $success = parent::save();
         foreach ($this->teams as $team) {
             $team->save();
@@ -52,29 +87,7 @@ class Game extends Model
         return $success;
     }
 
-    public function getNextGame(): ?Game {
-        if (!isset($this->nextGame)) {
-            $this->nextGame = $this->tournament->queryGames()->where('[start] > %dt', $this->start)->orderBy('start')->first();
-        }
-        return $this->nextGame;
-    }
-
-    public function getPrevGame(): ?Game {
-        if (!isset($this->prevGame)) {
-            $this->prevGame = $this->tournament->queryGames()->where('[start] < %dt', $this->start)->orderBy('start')->desc()->first();
-        }
-        return $this->prevGame;
-    }
-
-    public function getGame(): ?\App\GameModels\Game\Game {
-        if (!isset($this->code)) {
-            return null;
-        }
-        $this->game = GameFactory::getByCode($this->code);
-        return $this->game;
-    }
-
-    public function hasTeam(Team $team): bool {
+    public function hasTeam(Team $team) : bool {
         foreach ($this->teams as $checkTeam) {
             if ($team->id === $checkTeam->team?->id) {
                 return true;

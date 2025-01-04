@@ -2,6 +2,9 @@
 
 namespace LAC\Modules\Tournament\Models;
 
+use Lsr\Orm\Attributes\Hooks\AfterInsert;
+use Lsr\Orm\Attributes\Hooks\AfterUpdate;
+
 trait WithPublicId
 {
     /** @var array<int,static> */
@@ -18,11 +21,10 @@ trait WithPublicId
         return static::$publicIdMap[$publicId];
     }
 
-    public function save(): bool {
-        $success = parent::save();
+    #[AfterUpdate, AfterInsert]
+    public function updatePublicIdMap() : void {
         if ($this->idPublic !== null) {
             static::$publicIdMap[$this->idPublic] = $this;
         }
-        return $success;
     }
 }

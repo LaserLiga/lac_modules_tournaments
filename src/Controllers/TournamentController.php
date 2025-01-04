@@ -26,12 +26,12 @@ use LAC\Modules\Tournament\Models\Team as TournamentTeam;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Models\TournamentPresetType;
 use LAC\Modules\Tournament\Services\TournamentProvider;
-use Lsr\Core\Caching\Cache;
+use Lsr\Caching\Cache;
 use Lsr\Core\Controllers\Controller;
-use Lsr\Core\Exceptions\ValidationException;
 use Lsr\Core\Requests\Dto\SuccessResponse;
 use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
+use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\MultiProgression as MultiProgressionRozlos;
@@ -76,14 +76,14 @@ class TournamentController extends Controller
     public function rozlos(Tournament $tournament): ResponseInterface {
         $this->params['tournament'] = $tournament;
         $this->params['groups'] = $tournament->groups;
-        $this->params['teams'] = $tournament->getTeams();
+        $this->params['teams'] = $tournament->teams;
         $this->params['games'] = $tournament->getGames();
         $this->params['addJs'] = ['modules/tournament/rozlos.js'];
         return $this->view('../modules/Tournament/templates/rozlos');
     }
 
     public function rozlosProcess(Tournament $tournament, Request $request): ResponseInterface {
-        $teams = $tournament->getTeams();
+        $teams = $tournament->teams;
         $type = TournamentPresetType::tryFrom($request->getPost('tournament-type', ''));
         if ($type === null) {
             $request->addPassError(lang('Neplatný typ turnaje'));
@@ -176,7 +176,7 @@ class TournamentController extends Controller
                     $groupTeamKey[$game->group->id] = [];
                 }
                 $game->start = $start;
-                foreach ($gameRozlos->getTeams() as $teamRozlos) {
+                foreach ($gameRozlos->teams as $teamRozlos) {
                     $gameTeam = new GameTeam();
                     $gameTeam->game = $game;
                     if ($teamRozlos instanceof BlankTeam) {
@@ -296,7 +296,7 @@ class TournamentController extends Controller
             if (!$music->public) {
                 continue;
             }
-            $group = $music->group ?? $music->name;
+            $group = empty($music->group) ? $music->name : $music->group;
             $this->params['musicGroups'][$group] ??= new MusicGroupDto($group);
             $this->params['musicGroups'][$group]->music[] = $music;
         }
@@ -320,7 +320,7 @@ class TournamentController extends Controller
     }
 
     public function playResults(Tournament $tournament, Game $game): ResponseInterface {
-        if ($game->getGame() === null) {
+        if ($game->game === null) {
             return $this->respond(['status' => 'not yet finished']);
         }
         $this->params['tournament'] = $tournament;
@@ -356,11 +356,11 @@ class TournamentController extends Controller
         $key = 0;
         foreach ($game->teams as $team) {
             $color = $this::EVO5_TEAM_COLORS[$key];
-            foreach ($team->team->getPlayers() as $id => $player) {
+            foreach ($team->team->players as $id => $player) {
                 $playersAll[$id] = $player;
             }
             $data['meta']['t' . $color . 'tournament'] = $team->id;
-            $data['team'][$color] = ['name' => $team->getName()];
+            $data['team'][$color] = ['name' => $team->name];
             $key++;
         }
 
@@ -400,13 +400,13 @@ class TournamentController extends Controller
         /** @var array<int,int> $bonus */
         $bonus = $request->getPost('bonus', []);
 
-        $results = $game->getGame();
+        $results = $game->game;
         if (!isset($results)) {
             return $this->respond(['error' => 'Game is not finished yet.'], 400);
         }
 
         /** @var Team $team */
-        foreach ($results->getTeams() as $team) {
+        foreach ($results->teams as $team) {
             if (!isset($team->tournamentTeam)) {
                 $team->bonus = null;
                 continue;
@@ -422,7 +422,7 @@ class TournamentController extends Controller
     }
 
     public function resetGame(Tournament $tournament, Game $game): ResponseInterface {
-        $results = $game->getGame();
+        $results = $game->game;
         if (!isset($results)) {
             return $this->respond(['status' => 'No results']);
         }
@@ -439,12 +439,12 @@ class TournamentController extends Controller
         $game->save();
 
         /** @var Team $team */
-        foreach ($results->getTeams() as $team) {
+        foreach ($results->teams as $team) {
             $team->tournamentTeam = null;
             $team->save();
         }
         /** @var \App\GameModels\Game\Player $player */
-        foreach ($results->getPlayers() as $player) {
+        foreach ($results->players as $player) {
             $player->tournamentPlayer = null;
             $player->save();
         }

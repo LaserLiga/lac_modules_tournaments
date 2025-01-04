@@ -58,11 +58,11 @@
 							 alt="{$team->name}" class="team-logo object-fit-cover rounded-circle" style="width: 2rem;">
 						<span class="team-name">{$team->name}</span>
 					</td>
-					<td>{$team->getWins()}</td>
-					<td>{$team->getDraws()}</td>
-					<td>{$team->getLosses()}</td>
+					<td>{$team->wins}</td>
+					<td>{$team->draws}</td>
+					<td>{$team->losses}</td>
 					<td>{$team->points}</td>
-					<td>{$team->getScore()|number:0,',','&nbsp;'|noescape}</td>
+					<td>{$team->score|number:0,',','&nbsp;'|noescape}</td>
 				</tr>
 				</tbody>
 			</table>

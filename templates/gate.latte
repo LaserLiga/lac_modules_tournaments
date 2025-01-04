@@ -28,7 +28,7 @@
 					{var string[] $scores = []}
 					<td class="col-3">{$gameTournament->start->format('H:i')}</td>
 					<td class="col-3" n:foreach="$gameTournament->teams as $team">
-						{$team->getName()}
+						{$team->name}
 						{do $scores[] = number_format($team->score ?? 0, 0, ',', '&nbsp;')}
 					</td>
 					<td class="col-3">{ifset $gameTournament->code}{$scores|implode:'&nbsp;:&nbsp;'|noescape}{/ifset}</td>
@@ -59,11 +59,11 @@
 						 alt="{$team->name}" class="team-logo object-fit-cover rounded-circle" style="width: 2rem;">
 					<span class="team-name">{$team->name}</span>
 				</td>
-				<td>{$team->getWins()}</td>
-				<td>{$team->getDraws()}</td>
-				<td>{$team->getLosses()}</td>
+				<td>{$team->wins}</td>
+				<td>{$team->draws}</td>
+				<td>{$team->losses}</td>
 				<td>{$team->points}</td>
-				<td>{$team->getScore()|number:0,',','&nbsp;'|noescape}</td>
+				<td>{$team->score|number:0,',','&nbsp;'|noescape}</td>
 			</tr>
 			</tbody>
 		</table>

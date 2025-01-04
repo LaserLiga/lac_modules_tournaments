@@ -13,9 +13,9 @@
     <form action="" id="tournament-teams-form" method="post">
 
         {dump $tournament}
-        {dump $tournament->getTeams()}
+        {dump $tournament->teams}
         <div id="teams">
-            <div n:foreach="$tournament->getTeams() as $team" class="team card">
+			<div n:foreach="$tournament->teams as $team" class="team card">
                 <div class="card-body">
                     <div class="form-floating">
                         <input type="text" id="team-name-{$team->id}" class="form-control" required
@@ -23,7 +23,7 @@
                         <label for="team-name-{$team->id}">{_'Název týmu', domain: 'tournament'}</label>
                     </div>
 
-                    <div n:foreach="$team->getPlayers() as $player" class="input-group player">
+					<div n:foreach="$team->players as $player" class="input-group player">
                         <input type="hidden" class="player-code" name="teams[{$team->id}][players][{$player->id}][code]"
                                value="{$player->user?->getCode()}">
                         <div class="form-floating">

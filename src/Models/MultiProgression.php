@@ -3,19 +3,19 @@
 namespace LAC\Modules\Tournament\Models;
 
 use JsonException;
-use Lsr\Core\DB;
-use Lsr\Core\Models\Attributes\ManyToMany;
-use Lsr\Core\Models\Attributes\ManyToOne;
-use Lsr\Core\Models\Attributes\NoDB;
-use Lsr\Core\Models\Attributes\PrimaryKey;
-use Lsr\Core\Models\Model;
+use Lsr\Db\DB;
+use Lsr\Orm\Attributes\Relations\ManyToMany;
+use Lsr\Orm\Attributes\Relations\ManyToOne;
+use Lsr\Orm\Attributes\NoDB;
+use Lsr\Orm\Attributes\PrimaryKey;
+use Lsr\Orm\Model;
 
 #[PrimaryKey('id_progression')]
-class MultiProgression extends Model
+class MultiProgression extends \App\Models\BaseModel
 {
     use WithPublicId;
 
-    public const TABLE = 'tournament_multi_progressions';
+    public const string TABLE = 'tournament_multi_progressions';
 
     #[ManyToOne]
     public Tournament $tournament;

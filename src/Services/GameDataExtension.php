@@ -43,19 +43,19 @@ class GameDataExtension implements GameDataExtensionInterface
     }
 
     public function reorder(Game $game): void {
-        if (!isset($game->tournamentGame) || $game->getMode() === null) {
+        if (!isset($game->tournamentGame) || $game->mode === null) {
             return;
         }
-        $win = $game->getMode()->getWin($game);
+        $win = $game->mode->getWin($game);
         /** @var Team $team */
-        foreach ($game->getTeams() as $team) {
+        foreach ($game->teams as $team) {
             /** @var GameTeam $tournamentTeam */
             foreach ($game->tournamentGame->teams as $tournamentTeam) {
                 if ($team->tournamentTeam->id !== $tournamentTeam->team->id) {
                     continue;
                 }
                 $tournamentTeam->team->points -= $tournamentTeam->points;
-                $tournamentTeam->score = $team->getScore();
+                $tournamentTeam->score = $team->score;
                 $tournamentTeam->position = $team->position;
                 if (!isset($win)) {
                     $tournamentTeam->points = $team->tournamentTeam->tournament->points->draw;

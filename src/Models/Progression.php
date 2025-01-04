@@ -2,18 +2,18 @@
 
 namespace LAC\Modules\Tournament\Models;
 
+use App\Models\BaseModel;
 use JsonException;
-use Lsr\Core\Models\Attributes\ManyToOne;
-use Lsr\Core\Models\Attributes\NoDB;
-use Lsr\Core\Models\Attributes\PrimaryKey;
-use Lsr\Core\Models\Model;
+use Lsr\Orm\Attributes\NoDB;
+use Lsr\Orm\Attributes\PrimaryKey;
+use Lsr\Orm\Attributes\Relations\ManyToOne;
 
 #[PrimaryKey('id_progression')]
-class Progression extends Model
+class Progression extends BaseModel
 {
     use WithPublicId;
 
-    public const TABLE = 'tournament_progressions';
+    public const string TABLE = 'tournament_progressions';
 
     #[ManyToOne]
     public Tournament $tournament;
@@ -37,7 +37,7 @@ class Progression extends Model
     /**
      * @return int[]
      */
-    public function getKeys(): array {
+    public function getKeys() : array {
         if (empty($this->keysParsed) && !empty($this->keys)) {
             try {
                 $this->keysParsed = json_decode($this->keys, false, 512, JSON_THROW_ON_ERROR);
@@ -48,10 +48,10 @@ class Progression extends Model
     }
 
     /**
-     * @param int[] $keys
+     * @param  int[]  $keys
      * @throws JsonException
      */
-    public function setKeys(array $keys): Progression {
+    public function setKeys(array $keys) : Progression {
         $this->keysParsed = $keys;
         $this->keys = json_encode($keys, JSON_THROW_ON_ERROR);
         return $this;

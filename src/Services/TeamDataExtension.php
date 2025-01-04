@@ -8,8 +8,8 @@ use App\GameModels\Game\Team;
 use Dibi\Row;
 use LAC\Modules\Core\GameDataExtensionInterface;
 use LAC\Modules\Tournament\Models\Team as TournamentTeam;
-use Lsr\Core\Exceptions\ModelNotFoundException;
-use Lsr\Core\Exceptions\ValidationException;
+use Lsr\Orm\Exceptions\ModelNotFoundException;
+use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Lsr\Logging\Exceptions\DirectoryCreationException;
 
 class TeamDataExtension implements GameDataExtensionInterface
@@ -59,8 +59,8 @@ class TeamDataExtension implements GameDataExtensionInterface
     }
 
     public function setBonus(Team $team): void {
-        if (isset($team->getGame()?->tournamentGame, $team->tournamentTeam)) {
-            foreach ($team->getGame()->tournamentGame->teams as $tournamentTeam) {
+        if (isset($team->game?->tournamentGame, $team->tournamentTeam)) {
+            foreach ($team->game->tournamentGame->teams as $tournamentTeam) {
                 if ($tournamentTeam->team->id !== $team->tournamentTeam->id) {
                     continue;
                 }
