@@ -3,14 +3,13 @@
 namespace LAC\Modules\Tournament\Services;
 
 use App\Core\App;
-use App\GameModels\Game\Game;
-use App\GameModels\Game\Team;
-use App\Tools\AbstractResultsParser;
-use LAC\Modules\Core\ResultParserExtensionInterface;
 use LAC\Modules\Tournament\Models\Game as TournamentGame;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
 use LAC\Modules\Tournament\Models\Tournament;
+use Lsr\Lg\Results\AbstractResultsParser;
+use Lsr\Lg\Results\Interface\Models\GameInterface;
+use Lsr\Lg\Results\Interface\ResultParserExtensionInterface;
 use Lsr\Orm\Exceptions\ModelNotFoundException;
 
 class ResultParserExtension implements ResultParserExtensionInterface
@@ -18,7 +17,7 @@ class ResultParserExtension implements ResultParserExtensionInterface
     /**
      * @inheritDoc
      */
-    public function parse(Game $game, array $meta, AbstractResultsParser $parser): void {
+    public function parse(GameInterface $game, array $meta, AbstractResultsParser $parser) : void {
         if (!empty($meta['tournament'])) {
             try {
                 $tournament = Tournament::get((int)$meta['tournament']);

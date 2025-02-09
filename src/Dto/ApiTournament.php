@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace LAC\Modules\Tournament\Dto;
 
-use App\GameModels\Game\Enums\GameModeType;
 use DateTimeInterface;
+use Lsr\Lg\Results\Enums\GameModeType;
 
 class ApiTournament
 {

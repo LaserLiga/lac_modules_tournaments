@@ -3,10 +3,10 @@
 namespace LAC\Modules\Tournament\Models;
 
 use App\Core\App;
-use App\GameModels\Game\Enums\GameModeType;
 use App\Models\BaseModel;
 use App\Models\GameGroup;
 use DateTimeInterface;
+use Lsr\Lg\Results\Enums\GameModeType;
 use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Lsr\Orm\Attributes\Instantiate;
 use Lsr\Orm\Attributes\NoDB;

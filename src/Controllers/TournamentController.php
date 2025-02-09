@@ -4,7 +4,6 @@ namespace LAC\Modules\Tournament\Controllers;
 
 use App\Core\App;
 use App\Core\Info;
-use App\GameModels\Game\Enums\GameModeType;
 use App\GameModels\Game\Team;
 use App\GameModels\Vest;
 use App\Gate\Models\GateScreenModel;
@@ -31,6 +30,7 @@ use Lsr\Core\Controllers\Controller;
 use Lsr\Core\Requests\Dto\SuccessResponse;
 use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
+use Lsr\Lg\Results\Enums\GameModeType;
 use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use TournamentGenerator\BlankTeam;
