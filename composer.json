@@ -23,7 +23,7 @@
 	],
 	"require": {
 		"laser_arena_control/core_module": "*",
-    "lsr/core": "^0.3.x-dev",
+		"lsr/core": "^0.3",
     "lsr/helpers": "^0.3",
     "heroyt/tournament-generator": "^0.5.5"
   },
