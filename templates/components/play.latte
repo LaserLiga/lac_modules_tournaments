@@ -189,15 +189,15 @@
                 <div class="vests d-flex flex-wrap justify-content-center align-items-center">
                     <label n:foreach="$vests as $vest"
                             for="vest-{$vest->vestNum}" class="form-check-label bg-secondary rounded py-1 px-3 m-3"
-                            {if $vest->status !== App\GameModels\Game\Enums\VestStatus::OK}
+							{if $vest->status !== Lsr\LaserLiga\Enums\VestStatus::OK}
                         data-toggle="tooltip" title="{$vest->info}"
                             {/if}>
                         <input type="checkbox" value="{$vest->vestNum}" class="form-check-input available-vests"
                                checked id="vest-{$vest->vestNum}">
                         {$vest->vestNum}
-                        {if $vest->status === App\GameModels\Game\Enums\VestStatus::PLAYABLE}
+						{if $vest->status === Lsr\LaserLiga\Enums\VestStatus::PLAYABLE}
                             {faSolid 'circle-exclamation', ['text-warning', 'ms-1']}
-                        {elseif $vest->status === App\GameModels\Game\Enums\VestStatus::BROKEN}
+						{elseif $vest->status === Lsr\LaserLiga\Enums\VestStatus::BROKEN}
                             {faSolid 'circle-exclamation', ['text-danger', 'ms-1']}
                         {/if}
                     </label>
