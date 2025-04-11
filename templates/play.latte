@@ -21,7 +21,7 @@
             {faSolid 'list'} {_'Všechny hry'}
 		</a>
 	</p>
-    <h2>{_'Turnaj'} - {$tournament->name}</h2>
+	<h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
 
     <h3>{_'Hra'}: {ifset $game->start}{$game->start->format('H:i')}{/ifset} {$game->group?->name}</h3>
 

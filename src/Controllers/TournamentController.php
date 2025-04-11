@@ -259,7 +259,9 @@ class TournamentController extends Controller
 
     public function rozlosClear(Tournament $tournament, Request $request): ResponseInterface {
         $this->tournamentProvider->reset($tournament);
-        $request->passNotices[] = ['type' => 'success', 'content' => lang('Rozlosování bylo smazáno')];
+        $request->passNotices[] = ['type'    => 'success',
+                                   'content' => lang('Rozlosování bylo smazáno', domain: 'tournament'),
+        ];
         return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
     }
 
@@ -538,7 +540,7 @@ class TournamentController extends Controller
         } catch (ValidationException $e) {
             $errors[] = $e->getMessage();
         }
-        $errors[] = lang('Turnaj se nepodařilo uložit.');
+        $errors[] = lang('Turnaj se nepodařilo uložit.', domain: 'tournament');
         $this->params['values'] = $values;
         $this->params['errors'] = $errors;
         $this->params['addJs'] = ['modules/tournament/create.js'];

@@ -436,12 +436,12 @@ class TournamentProvider
 
         // Generate the final barrage turns
         $roundNames = [
-            lang('Finále'),
-            lang('Semifinále'),
-            lang('Čtvrtfinále'),
-            lang('Osmifinále'),
+          lang('Finále', domain: 'tournament'),
+          lang('Semifinále', domain: 'tournament'),
+          lang('Čtvrtfinále', domain: 'tournament'),
+          lang('Osmifinále', domain: 'tournament'),
         ];
-        $otherRoundName = lang('Předkolo');
+        $otherRoundName = lang('Předkolo', domain: 'tournament');
         $alphabet = range('A', 'Z');
         $roundCounter = 1;
         $barrageRounds = min(
@@ -686,12 +686,12 @@ class TournamentProvider
 
         // Generate the final barrage turns
         $roundNames = [
-            lang('Finále'),
-            lang('Semifinále'),
-            lang('Čtvrtfinále'),
-            lang('Osmifinále'),
+          lang('Finále', domain: 'tournament'),
+          lang('Semifinále', domain: 'tournament'),
+          lang('Čtvrtfinále', domain: 'tournament'),
+          lang('Osmifinále', domain: 'tournament'),
         ];
-        $otherRoundName = lang('Předkolo');
+        $otherRoundName = lang('Předkolo', domain: 'tournament');
         $alphabet = range('A', 'Z');
         $roundCounter = 3;
 
