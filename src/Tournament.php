@@ -12,7 +12,7 @@ use LAC\Modules\Tournament\Gate\Screens\TournamentResultsScreen;
 
 class Tournament extends Module
 {
-    public const NAME = 'Turnaje';
+    public const string NAME = 'Turnaje';
 
     public function install(): void {
         $gateType = GateType::getBySlug('tournament_default');

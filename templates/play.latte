@@ -1,14 +1,5 @@
 {layout '../../../templates/@layout.latte'}
-
-{varType LAC\Modules\Tournament\Models\Tournament $tournament}
-{varType LAC\Modules\Tournament\Models\Game $game}
-{varType LAC\Modules\Tournament\Models\Game[] $upcomingGames}
-{varType App\GameModels\Vest[] $vests}
-{varType App\Models\MusicMode[] $musicModes}
-{varType App\Gate\Models\MusicGroupDto[] $musicGroups}
-{varType App\Models\Playlist[] $playlists}
-
-{varType array<int,int> $teamColors}
+{templateType LAC\Modules\Tournament\Templates\TournamentPlayTemplate}
 
 {import '../../../templates/components/control/scoreDownload.latte'}
 
@@ -29,10 +20,10 @@
 		  data-results="{link 'tournament', $tournament->id, 'play', $game->id, 'results'}">
 		{include './components/play.latte'}
 	</form>
-	{dump $vests}
 	{include scoreDownloadModal}
     {include '../../../templates/pages/new-game/helpers/musicModesDisplay.latte', $musicGroups}
 	<script>
 		const vests = {$vests};
+		const system = {$system};
 	</script>
 {/block}

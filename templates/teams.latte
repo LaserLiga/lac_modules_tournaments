@@ -11,9 +11,6 @@
     <h2>{_'Týmy', domain: 'tournament'} - {$tournament->name}</h2>
 
     <form action="" id="tournament-teams-form" method="post">
-
-        {dump $tournament}
-        {dump $tournament->teams}
         <div id="teams">
 			<div n:foreach="$tournament->teams as $team" class="team card">
                 <div class="card-body">
