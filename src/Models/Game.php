@@ -73,7 +73,7 @@ class Game extends BaseModel
     }
 
     public function saveTeams() : bool {
-        return array_all($this->teams->models, static fn(Team $team) => $team->save());
+        return array_all($this->teams->models, static fn(GameTeam $team) => $team->save());
     }
 
     public function savePlayers() : bool {
