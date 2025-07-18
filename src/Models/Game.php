@@ -76,17 +76,6 @@ class Game extends BaseModel
         return $this->game !== null;
     }
 
-    public function save() : bool {
-        $success = parent::save();
-        foreach ($this->teams as $team) {
-            $team->save();
-        }
-        foreach ($this->players as $player) {
-            $player->save();
-        }
-        return $success;
-    }
-
     public function hasTeam(Team $team) : bool {
         foreach ($this->teams as $checkTeam) {
             if ($team->id === $checkTeam->team?->id) {
