@@ -130,17 +130,15 @@ class TournamentController extends Controller
                     if ($progression instanceof ProgressionRozlos) {
                         $progressions[] = $progression;
                     }
-                    else {
-                        if ($progression instanceof MultiProgressionRozlos) {
-                            // Generate key to prevent duplicates, because the progression is saved in multiple groups
-                            $ids = array_map(
-                              static fn(\TournamentGenerator\Group $g) => $g->getId(),
-                              $progression->getFrom()
-                            );
-                            sort($ids);
-                            $key = implode('-', $ids).'->'.$group->id;
-                            $multiProgressions[$key] = $progression;
-                        }
+                    else if ($progression instanceof MultiProgressionRozlos) {
+                        // Generate key to prevent duplicates, because the progression is saved in multiple groups
+                        $ids = array_map(
+                          static fn(\TournamentGenerator\Group $g) => $g->getId(),
+                          $progression->getFrom()
+                        );
+                        sort($ids);
+                        $key = implode('-', $ids).'->'.$group->id;
+                        $multiProgressions[$key] = $progression;
                     }
                 }
             }
@@ -153,7 +151,7 @@ class TournamentController extends Controller
 
         $groupTeamKey = [];
         foreach ($tournamentRozlos->getRounds() as $round) {
-            /** @var \TournamentGenerator\Game $roundGames */
+            /** @var \TournamentGenerator\Game[] $roundGames */
             $roundGames = [];
             /** @var \TournamentGenerator\Game[][] $roundGroupGames */
             $roundGroupGames = [];
@@ -182,7 +180,7 @@ class TournamentController extends Controller
                     $groupTeamKey[$game->group->id] = [];
                 }
                 $game->start = $start;
-                foreach ($gameRozlos->teams as $teamRozlos) {
+                foreach ($gameRozlos->getTeams() as $teamRozlos) {
                     $gameTeam = new GameTeam();
                     $gameTeam->game = $game;
                     if ($teamRozlos instanceof BlankTeam) {
