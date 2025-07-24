@@ -20,7 +20,6 @@ use Throwable;
 class TournamentResults extends Controller
 {
     public function __construct(private readonly Gate $gate) {
-        parent::__construct();
     }
 
     public function results(Tournament $tournament): ResponseInterface {

@@ -54,7 +54,6 @@ class TournamentController extends Controller
       private readonly GameLoader         $gameLoader,
       private readonly SessionInterface   $session,
     ) {
-        parent::__construct($latte);
     }
 
     public function index() : ResponseInterface {

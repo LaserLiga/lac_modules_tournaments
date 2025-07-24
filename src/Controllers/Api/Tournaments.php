@@ -5,16 +5,13 @@ namespace LAC\Modules\Tournament\Controllers\Api;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Services\TournamentProvider;
 use Lsr\Core\Controllers\ApiController;
-use Lsr\Core\Templating\Latte;
 use Psr\Http\Message\ResponseInterface;
 
 class Tournaments extends ApiController
 {
     public function __construct(
-        Latte                               $latte,
         private readonly TournamentProvider $tournamentProvider,
     ) {
-        parent::__construct($latte);
     }
 
     public function getAll(): ResponseInterface {
