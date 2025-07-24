@@ -122,6 +122,7 @@ class TournamentController extends Controller
                 $group->round = !empty($roundName) ? $roundName : null;
                 $group->name = (!empty($roundName) ? $roundName.' - ' : '').$groupRozlos->getName();
                 $group->tournament = $tournament;
+                echo 'Inserting group - '.$group->name."\n";
                 $group->save();
                 $groups[$group->id] = $group;
                 $groupRozlos->setId($group->id);
@@ -199,8 +200,10 @@ class TournamentController extends Controller
                         }
                         $gameTeam->key = $groupTeamKey[$game->group->id][$gameTeam->team->id];
                     }
-                    $game->teams[] = $gameTeam;
+
+                    $game->teams->push($gameTeam);
                 }
+                echo 'Inserting game - '.implode(',', $game->teams->map(fn($team) => $team->key))."\n";
                 $game->save();
                 $start = $start->add($addInterval);
             }
@@ -257,6 +260,7 @@ class TournamentController extends Controller
 
             $progression->save();
         }
+        echo 'Rozlos done...'.PHP_EOL;
         $request->passNotices[] = ['type' => 'success', 'content' => lang('Vygenerováno')];
         return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
     }

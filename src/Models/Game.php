@@ -5,6 +5,9 @@ namespace LAC\Modules\Tournament\Models;
 use App\GameModels\Factory\GameFactory;
 use App\Models\BaseModel;
 use DateTimeInterface;
+use Lsr\ObjectValidation\Attributes\NoValidate;
+use Lsr\Orm\Attributes\Hooks\AfterInsert;
+use Lsr\Orm\Attributes\Hooks\AfterUpdate;
 use Lsr\Orm\Attributes\NoDB;
 use Lsr\Orm\Attributes\PrimaryKey;
 use Lsr\Orm\Attributes\Relations\ManyToMany;
@@ -36,7 +39,7 @@ class Game extends BaseModel
     public ?string $code = null;
     public DateTimeInterface $start;
 
-    #[NoDB]
+    #[NoDB, NoValidate]
     public ?\App\GameModels\Game\Game $game = null {
         get {
             if (!isset($this->code)) {
@@ -46,7 +49,7 @@ class Game extends BaseModel
             return $this->game;
         }
     }
-    #[NoDB]
+    #[NoDB, NoValidate]
     public ?Game $nextGame = null {
         get {
             if (!isset($this->nextGame)) {
@@ -58,7 +61,7 @@ class Game extends BaseModel
             return $this->nextGame;
         }
     }
-    #[NoDB]
+    #[NoDB, NoValidate]
     public ?Game $prevGame = null {
         get {
             if (!isset($this->prevGame)) {
@@ -72,16 +75,29 @@ class Game extends BaseModel
         }
     }
 
+    #[AfterUpdate, AfterInsert]
     public function saveTeams() : bool {
-        return array_all($this->teams->models, static fn(GameTeam $team) => $team->save());
+        echo 'Saving teams for game '.$this->id.PHP_EOL;
+        var_dump($this->teams->count());
+        foreach ($this->teams as $team) {
+            if (!$team->save()) {
+                echo 'Failed to save team '.$team->name.' for game '.$this->id.PHP_EOL;
+                return false;
+            }
+        }
+        return true;
     }
 
+    #[AfterUpdate, AfterInsert]
     public function savePlayers() : bool {
-        return array_all($this->players->models, static fn(Player $player) => $player->save());
-    }
-
-    public function save() : bool {
-        return parent::save() && $this->saveTeams() && $this->savePlayers();
+        echo 'Saving players for game '.$this->id.PHP_EOL;
+        foreach ($this->players as $player) {
+            if (!$player->save()) {
+                echo 'Failed to save player '.$player->name.' for game '.$this->id.PHP_EOL;
+                return false;
+            }
+        }
+        return true;
     }
 
     public function hasScores() : bool {
@@ -90,7 +106,7 @@ class Game extends BaseModel
 
     public function hasTeam(Team $team) : bool {
         foreach ($this->teams as $checkTeam) {
-            if ($team->id === $checkTeam->team?->id) {
+            if ($checkTeam instanceof GameTeam && $team->id === $checkTeam->team?->id) {
                 return true;
             }
         }

@@ -158,4 +158,9 @@ class Team extends BaseModel
         }
         return $games;
     }
+
+    public function save() : bool {
+        echo 'Saving team '.($this->id ?? '<new>').PHP_EOL;
+        return parent::save();
+    }
 }
