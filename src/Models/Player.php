@@ -50,7 +50,10 @@ class Player extends BaseModel
     public array $vests {
         get {
             if (!isset($this->vests)) {
-                $this->vests = DB::select(\App\GameModels\Game\Evo5\Player::TABLE, '[vest], COUNT(*) as [count]')
+                $this->vests = DB::select(
+                  \App\GameModels\Game\Lasermaxx\Evo5\Player::TABLE,
+                  '[vest], COUNT(*) as [count]'
+                )
                                  ->where('id_tournament_player = %i', $this->id)
                                  ->groupBy('vest')
                                  ->fetchPairs('vest', 'count');
@@ -68,5 +71,4 @@ class Player extends BaseModel
         }
         return App::getInstance()->getBaseUrl().$this->image;
     }
-
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace LAC\Modules\Tournament\Templates;
@@ -15,7 +16,6 @@ use Lsr\Core\Controllers\TemplateParameters;
 
 class TournamentPlayTemplate extends TemplateParameters
 {
-
     use AutoFillParameters;
 
     /** @var System[] */
@@ -37,5 +37,4 @@ class TournamentPlayTemplate extends TemplateParameters
     public array $gateActions = [];
     /** @var array<int, int> */
     public array $teamColors = [];
-
 }

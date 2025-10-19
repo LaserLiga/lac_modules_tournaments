@@ -96,5 +96,4 @@ class GameTeam extends BaseModel
 
     #[NoDB]
     public ?int $color = null;
-
 }

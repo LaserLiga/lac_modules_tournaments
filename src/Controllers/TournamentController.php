@@ -130,7 +130,7 @@ class TournamentController extends Controller
                     if ($progression instanceof ProgressionRozlos) {
                         $progressions[] = $progression;
                     }
-                    else if ($progression instanceof MultiProgressionRozlos) {
+                    elseif ($progression instanceof MultiProgressionRozlos) {
                         // Generate key to prevent duplicates, because the progression is saved in multiple groups
                         $ids = array_map(
                           static fn(\TournamentGenerator\Group $g) => $g->getId(),
@@ -292,7 +292,7 @@ class TournamentController extends Controller
         if ($systemId === null) {
             $this->params->system = System::getDefault();
         }
-        else if (is_numeric($systemId)) {
+        elseif (is_numeric($systemId)) {
             try {
                 $this->params->system = System::get((int) $systemId);
             } catch (ModelNotFoundException) {

@@ -2,7 +2,7 @@
 
 namespace LAC\Modules\Tournament\Controllers;
 
-use App\GameModels\Game\Evo5\Player;
+use App\GameModels\Game\Lasermaxx\Evo5\Player;
 use App\Gate\Gate;
 use App\Gate\Models\GateType;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;

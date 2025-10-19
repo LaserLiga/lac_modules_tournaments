@@ -36,5 +36,4 @@ class League extends \App\Models\BaseModel
         }
         return App::getInstance()->getBaseUrl() . $this->image;
     }
-
 }
