@@ -66,7 +66,7 @@ class GameTeam extends BaseModel
                                 );
                                 if ($progression->totalLength > 0) {
                                     $this->name = sprintf(
-                                      lang('Nejlepší %d týmy z %d. týmů ze skupin: %s'),
+                                      lang('Nejlepší %d týmy z %d. týmů ze skupin: %s', domain: 'tournament'),
                                       $progression->totalLength,
                                       $i + ($progression->start ?? 0) + 1,
                                       implode(', ', $groupNames)
@@ -74,7 +74,7 @@ class GameTeam extends BaseModel
                                 }
                                 else {
                                     $this->name = sprintf(
-                                      lang('%d. tým ze skupin: %s'),
+                                      lang('%d. tým ze skupin: %s', domain: 'tournament'),
                                       $i + ($progression->start ?? 0) + 1,
                                       implode(', ', $groupNames),
                                     );

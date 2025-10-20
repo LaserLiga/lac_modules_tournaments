@@ -48,8 +48,8 @@
 				{/if}
                 <button type="button" class="btn btn-primary" id="progressTeams"
                         data-action="{link 'tournament', $tournament->id, 'progress'}"
-                        data-alert="{_'Postoupeno skupin:'}">
-                    {_'Postoupit týmy'}
+						data-alert="{_'Postoupeno skupin:', domain: 'tournament'}">
+					{_'Postoupit týmy', domain: 'tournament'}
                 </button>
 				<a n:ifset="$game->nextGame" href="{link 'tournament', $tournament->id, 'play', $game->nextGame->id}"
                                        class="btn btn-secondary">
@@ -174,7 +174,7 @@
 
             <section id="availableVests">
                 <h4 class="text-center mt-3">
-                    {_'Dostupné vesty'}
+					{_'Dostupné vesty', domain: 'tournament', context: 'vests'}
                     <button class="btn btn-primary btn-sm ms-2" id="redistribute-vests">
                         {faSolid 'shuffle'}
                         {_'Přerozdělit', domain: 'tournament', context: 'vests'}
