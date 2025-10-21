@@ -1,5 +1,5 @@
 tables:
-	App\GameModels\Game\Evo5\Team:
+	App\GameModels\Game\LaserMaxx\Evo5\Team:
 		modifications:
 			always:
 				- 'ADD `id_tournament_team` int(10) unsigned DEFAULT NULL AFTER `id_game`'
@@ -9,7 +9,7 @@ tables:
 				refTable: LAC\Modules\Tournament\Models\Team
 				refColumn: 'id_team'
 				onDelete: 'SET NULL'
-	App\GameModels\Game\Evo5\Player:
+	App\GameModels\Game\LaserMaxx\Evo5\Player:
 		modifications:
 			always:
 				- 'ADD `id_tournament_player` int(10) unsigned DEFAULT NULL AFTER `id_user`'
@@ -19,7 +19,7 @@ tables:
 				refTable: LAC\Modules\Tournament\Models\Player
 				refColumn: 'id_player'
 				onDelete: 'SET NULL'
-	App\GameModels\Game\Evo6\Team:
+	App\GameModels\Game\LaserMaxx\Evo6\Team:
 		modifications:
 			always:
 				- 'ADD `id_tournament_team` int(10) unsigned DEFAULT NULL'
@@ -29,7 +29,7 @@ tables:
 				refTable: LAC\Modules\Tournament\Models\Team
 				refColumn: 'id_team'
 				onDelete: 'SET NULL'
-	App\GameModels\Game\Evo6\Player:
+	App\GameModels\Game\LaserMaxx\Evo6\Player:
 		modifications:
 			always:
 				- 'ADD `id_tournament_player` int(10) unsigned DEFAULT NULL'
