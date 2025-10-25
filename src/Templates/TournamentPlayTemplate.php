@@ -6,10 +6,10 @@ namespace LAC\Modules\Tournament\Templates;
 
 use App\GameModels\Vest;
 use App\Gate\Models\MusicGroupDto;
+use App\Http\Templates\AutoFillParameters;
 use App\Models\MusicMode;
 use App\Models\Playlist;
 use App\Models\System;
-use App\Templates\AutoFillParameters;
 use LAC\Modules\Tournament\Models\Game;
 use LAC\Modules\Tournament\Models\Tournament;
 use Lsr\Core\Controllers\TemplateParameters;
