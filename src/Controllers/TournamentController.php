@@ -776,7 +776,6 @@ class TournamentController extends Controller
                         throw new \RuntimeException('Failed to save player ' . $player->nickname);
                     }
                 }
-                unset($team);
             }
 
             echo 'Clearing cache' . PHP_EOL;

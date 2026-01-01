@@ -76,9 +76,6 @@ class Tournament extends BaseModel
     #[NoDB]
     public array $players = [] {
         get {
-            if ($this->format === GameModeType::TEAM) {
-                return [];
-            }
             if (empty($this->players)) {
                 $this->players = Player::query()
                                        ->where('id_tournament = %i', $this->id)
