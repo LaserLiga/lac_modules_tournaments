@@ -34,7 +34,8 @@
 			</td>
 			<td>{$game->group->name}</td>
 			<td>
-                <a href="{link 'tournament', (string) $tournament->id, 'play', $game->id}" class="btn btn-info">
+                <a href="{link 'tournament', (string) $tournament->id, 'play', (string) $game->id}"
+                   class="btn btn-info">
                     {faSolid 'eye'}
                 </a>
             </td>
