@@ -727,7 +727,14 @@ class TournamentController extends Controller
             if (count($fairPlayers) > 2) {
                 $median = (int)round($fairTeamsService->getMedianPlayerScore());
                 foreach ($fairUnregisteredPlayers as $player) {
-                    $player->score = $median;
+                    // Name can contain a percentile score at the start, e.g. "0.85:PlayerNickname"
+                    if (preg_match('/(0\.\d+):(.+)/', $player->player->nickname, $matches)) {
+                        $percentile = (float)$matches[1];
+                        $player->player->nickname = $matches[2];
+                        $player->score = (int)round($fairTeamsService->getPercentileScore($percentile));
+                    } else {
+                        $player->score = $median;
+                    }
                 }
             }
 

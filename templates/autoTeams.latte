@@ -12,6 +12,22 @@
 
     <form action="" id="tournament-players-form" method="post">
         <div id="players">
+            <div n:foreach="$tournament->players as $player" class="player card">
+                <div class="card-body">
+                    <div class="input-group player">
+                        <input type="hidden" class="player-code" name="players[{$player->id}][code]"
+                               value="{$player->user?->getCode()}">
+                        <div class="form-floating">
+                            <input type="text" id="player-nickname-#" class="form-control player-nickname"
+                                   name="players[{$player->id}][nickname]"
+                                   value="{$player->nickname}"
+                                   placeholder="{_'Přezdívka', domain: 'tournament', context: 'team.player'}"
+                            >
+                            <label for="player-nickname-#">{_'Přezdívka', domain: 'tournament', context: 'team.player'}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <p class="mt-3 mb-5">

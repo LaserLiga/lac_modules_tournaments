@@ -4,7 +4,9 @@ window.addEventListener('load', () => {
     const teamsWrapper = document.getElementById('players') as HTMLDivElement;
     const teamTemplate = document.getElementById('player-card-template') as HTMLTemplateElement;
 
-    (teamsWrapper.querySelectorAll('.player') as NodeListOf<HTMLDivElement>).forEach(initPlayerInputs)
+    (teamsWrapper.querySelectorAll('.player') as NodeListOf<HTMLDivElement>).forEach((player) => {
+        initPlayerInputs(player, -1);
+    });
 
     let playerCounter = 0;
 

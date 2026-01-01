@@ -59,6 +59,17 @@ class FairTeams
         return $totalScore / count($this->players);
     }
 
+    public function getPercentileScore(float $percentile): float
+    {
+        if (empty($this->players)) {
+            return 0;
+        }
+        $scores = array_map(fn($player) => $player->score, $this->players);
+        sort($scores);
+        $index = (int)ceil($percentile * count($scores)) - 1;
+        return $scores[max(0, min($index, count($scores) - 1))];
+    }
+
     public function getMedianPlayerScore(): float
     {
         if (empty($this->players)) {
