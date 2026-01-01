@@ -37,6 +37,7 @@ use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
 use Lsr\Interfaces\SessionInterface;
 use Lsr\Lg\Results\Enums\GameModeType;
+use Lsr\Logging\Logger;
 use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Lsr\Orm\Exceptions\ModelNotFoundException;
 use Psr\Http\Message\ResponseInterface;
@@ -761,12 +762,13 @@ class TournamentController extends Controller
 
             // Save teams and players
             $allTeams = [];
+            $logger = new Logger(LOG_DIR, 'fair-teams');
             foreach ($teams as $fairTeam) {
                 $team = new TournamentTeam();
                 $team->tournament = $tournament;
                 $team->name = $this->teamNames->generate();
                 $allTeams[] = $team;
-                echo 'Processing team: ' . $team->name . ' (' . count($fairTeam->players) . ' players)' . PHP_EOL;
+                $logger->debug('Team: ' . $team->name);
 //                if (!$team->save()) {
 //                    throw new \RuntimeException('Failed to save team ' . $team->name);
 //                }
@@ -774,7 +776,7 @@ class TournamentController extends Controller
                 foreach ($fairTeam->players as $fairPlayer) {
                     $player = $fairPlayer->player;
                     $player->team = $team;
-                    echo 'Processing player: ' . $player->nickname . PHP_EOL;
+                    $logger->debug('Player: ' . $player->nickname . ' (score: ' . $fairPlayer->score . ')');
 //                    if (!$player->save()) {
 //                        throw new \RuntimeException('Failed to save player ' . $player->nickname);
 //                    }
