@@ -760,14 +760,16 @@ class TournamentController extends Controller
             echo 'Saving teams and players' . PHP_EOL;
 
             // Save teams and players
+            $allTeams = [];
             foreach ($teams as $fairTeam) {
                 $team = new TournamentTeam();
                 $team->tournament = $tournament;
                 $team->name = $this->teamNames->generate();
+                $allTeams[] = $team;
                 echo 'Processing team: ' . $team->name . ' (' . count($fairTeam->players) . ' players)' . PHP_EOL;
-                if (!$team->save()) {
-                    throw new \RuntimeException('Failed to save team ' . $team->name);
-                }
+//                if (!$team->save()) {
+//                    throw new \RuntimeException('Failed to save team ' . $team->name);
+//                }
 
                 foreach ($fairTeam->players as $fairPlayer) {
                     $player = $fairPlayer->player;
@@ -777,6 +779,10 @@ class TournamentController extends Controller
 //                        throw new \RuntimeException('Failed to save player ' . $player->nickname);
 //                    }
                 }
+            }
+
+            foreach ($allTeams as $team) {
+                $team->save();
             }
 
             foreach ($fairTeamsService->players as $player) {
