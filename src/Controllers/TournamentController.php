@@ -424,7 +424,7 @@ class TournamentController extends Controller
             }
         }
 
-        $meta = $this->gameLoader->loadGame('evo5', $data);
+        $meta = $this->gameLoader->loadGame('evo6', $data);
 
         return $this->respond(
           new SuccessResponse(
