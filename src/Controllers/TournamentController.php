@@ -764,7 +764,7 @@ class TournamentController extends Controller
                 $team = new TournamentTeam();
                 $team->tournament = $tournament;
                 $team->name = $this->teamNames->generate();
-                echo 'Processing team: ' . $team->name . ' (' . count($fairTeams->players) . ' players)' . PHP_EOL;
+                echo 'Processing team: ' . $team->name . ' (' . count($fairTeam->players) . ' players)' . PHP_EOL;
                 if (!$team->save()) {
                     throw new \RuntimeException('Failed to save team ' . $team->name);
                 }
