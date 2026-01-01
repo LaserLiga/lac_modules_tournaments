@@ -717,9 +717,11 @@ class TournamentController extends Controller
                         $player->user = $user;
                         $player->email = $user->email;
                         $fairPlayers[] = new FairTeamPlayer($player, $user->rank);
+                        $player->save();
                         continue;
                     }
                 }
+                $player->save();
                 $fairUnregisteredPlayers[] = new FairTeamPlayer($player, 100);
             }
 

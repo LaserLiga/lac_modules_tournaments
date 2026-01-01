@@ -71,4 +71,10 @@ class Player extends BaseModel
         }
         return App::getInstance()->getBaseUrl().$this->image;
     }
+
+    public function save(): bool
+    {
+        echo 'Saving player: ' . ($this->id ?? '<new>') . ' ' . $this->nickname . PHP_EOL;
+        return parent::save();
+    }
 }
