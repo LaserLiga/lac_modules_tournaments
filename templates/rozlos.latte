@@ -8,7 +8,7 @@
 
 {block content}
     <p>
-        <a href="{link 'tournament', $tournament->id}" class="btn btn-warning">
+        <a href="{link 'tournament', (string) $tournament->id}" class="btn btn-warning">
             {faSolid 'caret-left'} {_'Zpět'}
         </a>
     </p>
@@ -22,7 +22,7 @@
 {/block}
 
 {define clearTournament}
-    <form action="{link 'tournament', $tournament->id, 'rozlos'}" method="post" id="rozlos-form"
+    <form action="{link 'tournament', (string) $tournament->id, 'rozlos'}" method="post" id="rozlos-form"
           data-teams="{count($teams)}" data-teams-in-game="{$tournament->teamsInGame}">
         <div class="form-group my-2">
             <label for="tournament-type" class="form-label">{_'Typ turnaje', domain: 'tournament'}</label>
@@ -99,7 +99,7 @@
 {define fullTournament}
     <div class="alert alert-info">{_'Turnaj už byl rozlosován', domain: 'tournament'}</div>
     <p>
-        <a href="{link 'tournament', $tournament->id, 'rozlos', 'clear'}" class="btn btn-danger">
+        <a href="{link 'tournament', (string) $tournament->id, 'rozlos', 'clear'}" class="btn btn-danger">
             {_'Smazat rozlosování', domain: 'tournament'}
         </a>
     </p>

@@ -25,7 +25,7 @@
         </div>
     </nav>
     <div class="list-group mt-4">
-		<a n:foreach="$tournaments as $tournament" href="{link 'tournament', $tournament->id}"
+        <a n:foreach="$tournaments as $tournament" href="{link 'tournament', (string) $tournament->id}"
 												   class="list-group-item list-group-item-action">
 			{$tournament->start->format('d.m.Y H:i')}: {$tournament->name}
 		</a>

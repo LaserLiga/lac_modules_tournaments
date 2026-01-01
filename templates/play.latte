@@ -5,10 +5,10 @@
 
 {block content}
 	<p>
-		<a href="{link 'tournament', $tournament->id}" class="btn btn-warning">
+        <a href="{link 'tournament', (string) $tournament->id}" class="btn btn-warning">
             {faSolid 'caret-left'} {_'Zpět'}
 		</a>
-		<a href="{link 'tournament', $tournament->id, 'play', 'list'}" class="btn btn-info">
+        <a href="{link 'tournament', (string) $tournament->id, 'play', 'list'}" class="btn btn-info">
             {faSolid 'list'} {_'Všechny hry'}
 		</a>
 	</p>
@@ -16,8 +16,9 @@
 
     <h3>{_'Hra'}: {ifset $game->start}{$game->start->format('H:i')}{/ifset} {$game->group?->name}</h3>
 
-	<form action="{link 'tournament', $tournament->id, 'play', $game->id}" method="post" id="tournament-play-form"
-		  data-results="{link 'tournament', $tournament->id, 'play', $game->id, 'results'}">
+    <form action="{link 'tournament', (string) $tournament->id, 'play', $game->id}" method="post"
+          id="tournament-play-form"
+          data-results="{link 'tournament', (string) $tournament->id, 'play', $game->id, 'results'}">
 		{include './components/play.latte'}
 	</form>
 	{include scoreDownloadModal}

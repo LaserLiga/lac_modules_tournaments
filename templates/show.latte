@@ -12,31 +12,31 @@
     <h3>{$tournament->start->format('d.m.Y H:i')}</h3>
     <nav class="nav nav-pills">
         <div class="nav-item">
-            <a href="{link 'tournament', $tournament->id, 'teams'}" class="nav-link text-bg-primary mx-1">
+            <a href="{link 'tournament', (string) $tournament->id, 'teams'}" class="nav-link text-bg-primary mx-1">
                 {faSolid 'people-group'}
                 {_'Týmy', domain: 'tournament'}
             </a>
         </div>
         <div class="nav-item">
-            <a href="{link 'tournament', $tournament->id, 'rozlos'}" class="nav-link text-bg-secondary mx-1">
+            <a href="{link 'tournament', (string) $tournament->id, 'rozlos'}" class="nav-link text-bg-secondary mx-1">
                 {faSolid 'list'}
                 {_'Rozlosování', domain: 'tournament'}
             </a>
         </div>
         <div class="nav-item">
-            <a href="{link 'tournament', $tournament->id, 'play'}" class="nav-link text-bg-success mx-1">
+            <a href="{link 'tournament', (string) $tournament->id, 'play'}" class="nav-link text-bg-success mx-1">
                 {faSolid 'gun'}
                 {_'Hrát', domain: 'tournament'}
             </a>
         </div>
         <div class="nav-item">
-            <a href="{link 'tournament', $tournament->id, 'results'}" class="nav-link text-bg-info mx-1">
+            <a href="{link 'tournament', (string) $tournament->id, 'results'}" class="nav-link text-bg-info mx-1">
                 {faSolid 'medal'}
                 {_'Výsledky', domain: 'tournament'}
             </a>
         </div>
         <div class="nav-item">
-            <a href="{link 'tournament', $tournament->id, 'gate'}" class="nav-link text-bg-warning mx-1">
+            <a href="{link 'tournament', (string) $tournament->id, 'gate'}" class="nav-link text-bg-warning mx-1">
                 {faSolid 'display'}
                 {_'Výsledková tabule', domain: 'tournament'}
             </a>
