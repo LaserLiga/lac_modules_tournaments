@@ -732,6 +732,7 @@ class TournamentController extends Controller
                 $median = (int)round($fairTeamsService->getMedianPlayerScore());
                 echo 'Median score: ' . $median . PHP_EOL;
                 foreach ($fairUnregisteredPlayers as $player) {
+                    $matches = [];
                     // Name can contain a percentile score at the start, e.g. "0.85:PlayerNickname"
                     if (preg_match('/(0\.\d+):(.+)/', $player->player->nickname, $matches)) {
                         $percentile = (float)$matches[1];
@@ -761,12 +762,16 @@ class TournamentController extends Controller
                 $team = new TournamentTeam();
                 $team->tournament = $tournament;
                 $team->name = $this->teamNames->generate();
-                $team->save();
+                if (!$team->save()) {
+                    throw new \RuntimeException('Failed to save team ' . $team->name);
+                }
 
                 foreach ($fairTeam->players as $fairPlayer) {
                     $player = $fairPlayer->player;
                     $player->team = $team;
-                    $player->save();
+                    if (!$player->save()) {
+                        throw new \RuntimeException('Failed to save player ' . $player->nickname);
+                    }
                 }
             }
 
