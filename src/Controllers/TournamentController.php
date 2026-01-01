@@ -696,6 +696,7 @@ class TournamentController extends Controller
     {
         $players = $request->getPost('players');
         if (isset($players) && is_array($players)) {
+            echo 'Prepare fair teams' . PHP_EOL;
             $fairPlayers = [];
             $fairUnregisteredPlayers = [];
             foreach ($players as $pKey => $playerData) {
@@ -715,17 +716,21 @@ class TournamentController extends Controller
                     if (isset($user)) {
                         $player->user = $user;
                         $player->email = $user->email;
+                        $fairPlayers[] = new FairTeamPlayer($player, $user->rank);
+                        continue;
                     }
-                    $fairPlayers[] = new FairTeamPlayer($player, $user->rank);
-                } else {
-                    $fairUnregisteredPlayers[] = new FairTeamPlayer($player, 100);
                 }
+                $fairUnregisteredPlayers[] = new FairTeamPlayer($player, 100);
             }
+
+            echo count($fairPlayers) . ' registered players' . PHP_EOL;
+            echo count($fairUnregisteredPlayers) . ' unregistered players' . PHP_EOL;
 
             $fairTeamsService = new FairTeams($fairPlayers);
             // Unregistered players get a median score
             if (count($fairPlayers) > 2) {
                 $median = (int)round($fairTeamsService->getMedianPlayerScore());
+                echo 'Median score: ' . $median . PHP_EOL;
                 foreach ($fairUnregisteredPlayers as $player) {
                     // Name can contain a percentile score at the start, e.g. "0.85:PlayerNickname"
                     if (preg_match('/(0\.\d+):(.+)/', $player->player->nickname, $matches)) {
@@ -741,9 +746,15 @@ class TournamentController extends Controller
             // Add unregistered players to the list
             $fairTeamsService->players = array_merge($fairPlayers, $fairUnregisteredPlayers);
 
+            echo 'Total players: ' . count($fairTeamsService->players) . PHP_EOL;
+
             // Generate teams
             $teamCount = (int)ceil(count($fairTeamsService->players) / $tournament->teamSize);
+
+            echo 'Generating ' . $teamCount . ' teams' . PHP_EOL;
             $teams = $fairTeamsService->getTeams($teamCount);
+
+            echo 'Saving teams and players' . PHP_EOL;
 
             // Save teams and players
             foreach ($teams as $fairTeam) {
@@ -758,6 +769,8 @@ class TournamentController extends Controller
                     $player->save();
                 }
             }
+
+            echo 'Clearing cache' . PHP_EOL;
             /** @var Cache $cache */
             $cache = App::getServiceByType(Cache::class);
             $cache->clean(
