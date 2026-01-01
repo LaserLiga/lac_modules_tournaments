@@ -32,7 +32,7 @@ class Player extends BaseModel
 
     public bool $captain = false;
     public bool $sub = false;
-    #[Email]
+    #[Email(allowEmpty: true)]
     public ?string $email = null;
     public ?string $phone = null;
     public ?int $birthYear = null;

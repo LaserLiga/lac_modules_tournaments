@@ -643,4 +643,48 @@ class TournamentController extends Controller
         $this->params['addJs'] = ['modules/tournament/teams.js'];
         return $this->view('../modules/Tournament/templates/teams');
     }
+
+    public function players(Tournament $tournament, Request $request): ResponseInterface
+    {
+        $players = $request->getPost('players');
+        if (isset($players) && is_array($players)) {
+            foreach ($players as $pKey => $playerData) {
+                if (is_numeric($pKey)) {
+                    $player = Player::get((int)$pKey);
+                } else {
+                    $player = new Player();
+                    $player->team = null;
+                    $player->tournament = $tournament;
+                }
+                $player->name = $playerData['name'];
+                $player->surname = $playerData['surname'];
+                $player->nickname = $playerData['nickname'];
+                if (!empty($playerData['code'])) {
+                    $user = LigaPlayer::getByCode($playerData['code']);
+                    if (isset($user)) {
+                        $player->user = $user;
+                        $player->email = $user->email;
+                    }
+                }
+                if (!empty($player->nickname)) {
+                    $player->save();
+                }
+            }
+            /** @var Cache $cache */
+            $cache = App::getServiceByType(Cache::class);
+            $cache->clean(
+                [
+                    Cache::Tags => [
+                        'tournament-' . $tournament->id . '-players',
+                    ],
+                ]
+            );
+            $request->passNotices[] = ['type' => 'success', 'content' => lang('Uloženo')];
+            return $this->app->redirect(['tournament', $tournament->id, 'players'], $request);
+        }
+
+        $this->params['tournament'] = $tournament;
+        $this->params['addJs'] = ['modules/tournament/players.js'];
+        return $this->view('../modules/Tournament/templates/players');
+    }
 }

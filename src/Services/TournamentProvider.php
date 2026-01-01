@@ -395,7 +395,7 @@ class TournamentProvider
      * @post $tournamentRozlos object will be populated with generated games.
      */
     private function prepareGamesBarrage(Tournament $tournament, TournamentGenerator $tournamentRozlos, int $baseGameCount = 3, int $maxBarrageRounds = 4): void {
-        $teams = $tournamentRozlos->teams->get();
+        $teams = $tournamentRozlos->getTeams();
         shuffle($teams);
 
         // Initialize team counters

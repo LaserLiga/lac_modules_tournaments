@@ -12,9 +12,16 @@
     <h3>{$tournament->start->format('d.m.Y H:i')}</h3>
     <nav class="nav nav-pills">
         <div class="nav-item">
-            <a href="{link 'tournament', (string) $tournament->id, 'teams'}" class="nav-link text-bg-primary mx-1">
+            <a n:if="$tournament->format === Lsr\Lg\Results\Enums\GameModeType::TEAM"
+                    href="{link 'tournament', (string) $tournament->id, 'teams'}" class="nav-link text-bg-primary mx-1">
                 {faSolid 'people-group'}
                 {_'Týmy', domain: 'tournament'}
+            </a>
+            <a n:if="$tournament->format === Lsr\Lg\Results\Enums\GameModeType::SOLO"
+                    href="{link 'tournament', (string) $tournament->id, 'players'}"
+                    class="nav-link text-bg-primary mx-1">
+                {faSolid 'people-group'}
+                {_'Hráči', domain: 'tournament'}
             </a>
         </div>
         <div class="nav-item">
