@@ -772,10 +772,15 @@ class TournamentController extends Controller
                 foreach ($fairTeam->players as $fairPlayer) {
                     $player = $fairPlayer->player;
                     $player->team = $team;
-                    if (!$player->save()) {
-                        throw new \RuntimeException('Failed to save player ' . $player->nickname);
-                    }
+                    echo 'Processing player: ' . $player->nickname . PHP_EOL;
+//                    if (!$player->save()) {
+//                        throw new \RuntimeException('Failed to save player ' . $player->nickname);
+//                    }
                 }
+            }
+
+            foreach ($fairTeamsService->players as $player) {
+                $player->player->save();
             }
 
             echo 'Clearing cache' . PHP_EOL;
