@@ -1,0 +1,42 @@
+{layout '../../../templates/@layout.latte'}
+
+{varType LAC\Modules\Tournament\Models\Tournament $tournament}
+
+{block content}
+    <p>
+        <a href="{link 'tournament', (string) $tournament->id, 'teams'}" class="btn btn-warning">
+            {faSolid 'caret-left'} {_'Zpět'}
+        </a>
+    </p>
+    <h2>{_'Automatické týmy', domain: 'tournament'} - {$tournament->name}</h2>
+
+    <form action="" id="tournament-players-form" method="post">
+        <div id="players">
+        </div>
+
+        <p class="mt-3 mb-5">
+            <button type="submit" class="btn btn-success btn-lg">
+                {faSolid 'save'} {_'Uložit'}
+            </button>
+        </p>
+
+
+    </form>
+
+    <template id="player-card-template">
+        <div class="player card">
+            <div class="card-body">
+                <div class="input-group player">
+                    <input type="hidden" class="player-code" name="players[#][code]" value="">
+                    <div class="form-floating">
+                        <input type="text" id="player-nickname-#" class="form-control player-nickname"
+                               name="players[#][nickname]"
+                               value="" placeholder="{_'Přezdívka', domain: 'tournament', context: 'team.player'}"
+                        >
+                        <label for="player-nickname-#">{_'Přezdívka', domain: 'tournament', context: 'team.player'}</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+{/block}

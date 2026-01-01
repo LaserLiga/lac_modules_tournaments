@@ -16,6 +16,7 @@ use App\Tools\GameLoading\GameLoader;
 use App\Tools\GameLoading\LasermaxxGameLoader;
 use DateInterval;
 use DateTimeImmutable;
+use LAC\Modules\Tournament\Dto\FairTeamPlayer;
 use LAC\Modules\Tournament\Models\Game;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
@@ -25,6 +26,8 @@ use LAC\Modules\Tournament\Models\Progression;
 use LAC\Modules\Tournament\Models\Team as TournamentTeam;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Models\TournamentPresetType;
+use LAC\Modules\Tournament\Services\FairTeams;
+use LAC\Modules\Tournament\Services\RandomTeamNames;
 use LAC\Modules\Tournament\Services\TournamentProvider;
 use LAC\Modules\Tournament\Templates\TournamentPlayTemplate;
 use Lsr\Caching\Cache;
@@ -53,6 +56,7 @@ class TournamentController extends Controller
       private readonly TournamentProvider $tournamentProvider,
       private readonly GameLoader         $gameLoader,
       private readonly SessionInterface   $session,
+      private readonly RandomTeamNames $teamNames,
     ) {
     }
 
@@ -686,5 +690,84 @@ class TournamentController extends Controller
         $this->params['tournament'] = $tournament;
         $this->params['addJs'] = ['modules/tournament/players.js'];
         return $this->view('../modules/Tournament/templates/players');
+    }
+
+    public function autoTeams(Tournament $tournament, Request $request): ResponseInterface
+    {
+        $players = $request->getPost('players');
+        if (isset($players) && is_array($players)) {
+            $fairPlayers = [];
+            $fairUnregisteredPlayers = [];
+            foreach ($players as $pKey => $playerData) {
+                if (is_numeric($pKey)) {
+                    $player = Player::get((int)$pKey);
+                } else {
+                    $player = new Player();
+                    $player->team = null;
+                    $player->tournament = $tournament;
+                }
+                $player->nickname = $playerData['nickname'];
+                if (empty($player->nickname)) {
+                    continue;
+                }
+                if (!empty($playerData['code'])) {
+                    $user = LigaPlayer::getByCode($playerData['code']);
+                    if (isset($user)) {
+                        $player->user = $user;
+                        $player->email = $user->email;
+                    }
+                    $fairPlayers[] = new FairTeamPlayer($player, $user->rank);
+                } else {
+                    $fairUnregisteredPlayers[] = new FairTeamPlayer($player, 100);
+                }
+            }
+
+            $fairTeamsService = new FairTeams($fairPlayers);
+            // Unregistered players get a median score
+            if (count($fairPlayers) > 2) {
+                $median = (int)round($fairTeamsService->getMedianPlayerScore());
+                foreach ($fairUnregisteredPlayers as $player) {
+                    $player->score = $median;
+                }
+            }
+
+            // Add unregistered players to the list
+            $fairTeamsService->players = array_merge($fairPlayers, $fairUnregisteredPlayers);
+
+            // Generate teams
+            $teamCount = (int)ceil(count($fairTeamsService->players) / $tournament->teamSize);
+            $teams = $fairTeamsService->getTeams($teamCount);
+
+            // Save teams and players
+            foreach ($teams as $fairTeam) {
+                $team = new TournamentTeam();
+                $team->tournament = $tournament;
+                $team->name = $this->teamNames->generate();
+                $team->save();
+
+                foreach ($fairTeam->players as $fairPlayer) {
+                    $player = $fairPlayer->player;
+                    $player->team = $team;
+                    $player->save();
+                }
+            }
+            /** @var Cache $cache */
+            $cache = App::getServiceByType(Cache::class);
+            $cache->clean(
+                [
+                    Cache::Tags => [
+                        'tournament-' . $tournament->id . '-teams',
+                        'tournament-' . $tournament->id . '-players',
+                    ],
+                ]
+            );
+            $request->passNotices[] = ['type' => 'success', 'content' => lang('Uloženo')];
+
+            return $this->app->redirect(['tournament', $tournament->id, 'teams'], $request);
+        }
+
+        $this->params['tournament'] = $tournament;
+        $this->params['addJs'] = ['modules/tournament/autoTeams.js'];
+        return $this->view('../modules/Tournament/templates/autoTeams');
     }
 }

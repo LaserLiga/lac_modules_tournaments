@@ -35,6 +35,7 @@ services:
 		tags:
 			- ligaApiExtension
 	tournamentProvider: LAC\Modules\Tournament\Services\TournamentProvider
+	randomTeamNames: LAC\Modules\Tournament\Services\RandomTeamNames
 
 	gate.tournament.results: LAC\Modules\Tournament\Gate\Screens\TournamentResultsScreen
 search:

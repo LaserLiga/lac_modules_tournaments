@@ -10,6 +10,12 @@
     </p>
     <h2>{_'Týmy', domain: 'tournament'} - {$tournament->name}</h2>
 
+    <p>
+        <a href="{link 'tournament', (string) $tournament->id, 'teams', 'auto'}" class="btn btn-info">
+            {faSolid 'wand-magic'} {_'Automatické týmy', domain: 'tournament'}
+        </a>
+    </p>
+
     <form action="" id="tournament-teams-form" method="post">
         <div id="teams">
 			<div n:foreach="$tournament->teams as $team" class="team card">
