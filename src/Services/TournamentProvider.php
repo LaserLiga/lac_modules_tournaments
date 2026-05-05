@@ -1018,6 +1018,7 @@ class TournamentProvider
     }
 
     public function recalcTeamPoints(Tournament $tournament): void {
+        $this->logger->debug('TournamentProvider::recalcTeamPoints started', ['tournament' => $tournament->id ?? null]);
         $teams = $tournament->teams;
         $progressions = $tournament->getProgressions();
         /** @var array<int,int> $points Sum points for games for each team */
@@ -1041,5 +1042,9 @@ class TournamentProvider
             // Save changes
             $team->save();
         }
+        $this->logger->debug(
+            'TournamentProvider::recalcTeamPoints finished',
+            ['tournament' => $tournament->id ?? null, 'teams' => count($teams)]
+        );
     }
 }
