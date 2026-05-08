@@ -46,14 +46,23 @@ class ResultParserExtension implements ResultParserExtensionInterface
                         $gameTeam->score = $team->score;
                         $gameTeam->position = $team->position;
                         $gameTeam->color = $team->color;
+                        if (isset($gameTeam->team)) {
+                            $team->tournamentTeam = $gameTeam->team;
+                        }
                         $positions[$gameTeam->position] = $gameTeam;
+                        break;
                     }
                 }
 
+                ksort($positions);
                 foreach ($positions as $position => $gameTeam) {
                     switch ($tournament->teamsInGame) {
                         case 4:
-                            if ($position > 1 && $position[$position - 1]->score === $gameTeam->score) {
+                            if (
+                                $position > 1
+                                && isset($positions[$position - 1])
+                                && $positions[$position - 1]->score === $gameTeam->score
+                            ) {
                                 $position--;
                             }
                             $gameTeam->points = match ($position) {
@@ -65,7 +74,11 @@ class ResultParserExtension implements ResultParserExtensionInterface
                             };
                             break;
                         case 3:
-                            if ($position > 1 && $position[$position - 1]->score === $gameTeam->score) {
+                            if (
+                                $position > 1
+                                && isset($positions[$position - 1])
+                                && $positions[$position - 1]->score === $gameTeam->score
+                            ) {
                                 $position--;
                             }
                             $gameTeam->points = match ($position) {
@@ -84,9 +97,6 @@ class ResultParserExtension implements ResultParserExtensionInterface
                                 $gameTeam->points = $tournament->points->loss;
                             }
                             break;
-                    }
-                    if (isset($gameTeam->team)) {
-                        $team->tournamentTeam = $gameTeam->team;
                     }
                 }
 
