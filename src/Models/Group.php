@@ -38,16 +38,16 @@ class Group extends BaseModel
         get {
             if (empty($this->multiProgressionsFrom)) {
                 $this->multiProgressionsFrom = MultiProgression::query()
-                                                               ->where(
-                                                                 'id_progression IN %sql',
-                                                                 DB::select(
-                                                                   'tournament_multi_progressions_from',
-                                                                   'id_progression'
-                                                                 )
-                                                                   ->where('id_group = %i', $this->id)
-                                                                   ->fluent
-                                                               )
-                                                               ->get();
+                    ->where(
+                        'id_progression IN %sql',
+                        DB::select(
+                            'tournament_multi_progressions_from',
+                            'id_progression'
+                        )
+                            ->where('id_group = %i', $this->id)
+                            ->fluent
+                    )
+                    ->get();
             }
             return $this->multiProgressionsFrom;
         }
@@ -90,23 +90,23 @@ class Group extends BaseModel
         get {
             if (!isset($this->teams)) {
                 $this->teams = Team::query()
-                                   ->where(
-                                     'id_team IN %sql',
-                                     DB::select(GameTeam::TABLE, 'id_team')
-                                       ->where(
-                                         'id_game IN %sql',
-                                         DB::select(Game::TABLE, 'id_game')
-                                           ->where('id_group = %i', $this->id)
-                                           ->fluent
-                                       )
-                                       ->fluent
-                                   )
-                                   ->cacheTags(
-                                     'tournament/group/teams',
-                                     'tournament/'.$this->tournament->id.'/group/teams',
-                                     'tournament/'.$this->tournament->id.'/group/'.$this->id.'/teams'
-                                   )
-                                   ->get();
+                    ->where(
+                        'id_team IN %sql',
+                        DB::select(GameTeam::TABLE, 'id_team')
+                            ->where(
+                                'id_game IN %sql',
+                                DB::select(Game::TABLE, 'id_game')
+                                    ->where('id_group = %i', $this->id)
+                                    ->fluent
+                            )
+                            ->fluent
+                    )
+                    ->cacheTags(
+                        'tournament/group/teams',
+                        'tournament/' . $this->tournament->id . '/group/teams',
+                        'tournament/' . $this->tournament->id . '/group/' . $this->id . '/teams'
+                    )
+                    ->get();
             }
             return $this->teams;
         }
@@ -116,18 +116,19 @@ class Group extends BaseModel
      * @return Team[]
      * @throws ValidationException
      */
-    public function getTeamsSorted() : array {
+    public function getTeamsSorted(): array
+    {
         $teams = $this->teams;
         usort(
-          $teams,
-          function (Team $a, Team $b) {
-              $pointsA = $a->getPointsForGroup($this);
-              $pointsB = $b->getPointsForGroup($this);
-              if ($pointsA === $pointsB) {
-                  return $b->getScoreForGroup($this) - $a->getScoreForGroup($this);
-              }
-              return $pointsB - $pointsA;
-          }
+            $teams,
+            function (Team $a, Team $b) {
+                $pointsA = $a->getPointsForGroup($this);
+                $pointsB = $b->getPointsForGroup($this);
+                if ($pointsA === $pointsB) {
+                    return $b->getScoreForGroup($this) - $a->getScoreForGroup($this);
+                }
+                return $pointsB - $pointsA;
+            }
         );
         return $teams;
     }

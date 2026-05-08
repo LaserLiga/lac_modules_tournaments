@@ -54,9 +54,9 @@ class Game extends BaseModel
         get {
             if (!isset($this->nextGame)) {
                 $this->nextGame = $this->tournament->queryGames()
-                                                   ->where('[start] > %dt', $this->start)
-                                                   ->orderBy('start')
-                                                   ->first();
+                    ->where('[start] > %dt', $this->start)
+                    ->orderBy('start')
+                    ->first();
             }
             return $this->nextGame;
         }
@@ -66,22 +66,23 @@ class Game extends BaseModel
         get {
             if (!isset($this->prevGame)) {
                 $this->prevGame = $this->tournament->queryGames()
-                                                   ->where('[start] < %dt', $this->start)
-                                                   ->orderBy('start')
-                                                   ->desc()
-                                                   ->first();
+                    ->where('[start] < %dt', $this->start)
+                    ->orderBy('start')
+                    ->desc()
+                    ->first();
             }
             return $this->prevGame;
         }
     }
 
     #[AfterUpdate, AfterInsert]
-    public function saveTeams() : bool {
-        echo 'Saving teams for game '.$this->id.PHP_EOL;
+    public function saveTeams(): bool
+    {
+        echo 'Saving teams for game ' . $this->id . PHP_EOL;
         var_dump($this->teams->count());
         foreach ($this->teams as $team) {
             if (!$team->save()) {
-                echo 'Failed to save team '.$team->name.' for game '.$this->id.PHP_EOL;
+                echo 'Failed to save team ' . $team->name . ' for game ' . $this->id . PHP_EOL;
                 return false;
             }
         }
@@ -89,22 +90,25 @@ class Game extends BaseModel
     }
 
     #[AfterUpdate, AfterInsert]
-    public function savePlayers() : bool {
-        echo 'Saving players for game '.$this->id.PHP_EOL;
+    public function savePlayers(): bool
+    {
+        echo 'Saving players for game ' . $this->id . PHP_EOL;
         foreach ($this->players as $player) {
             if (!$player->save()) {
-                echo 'Failed to save player '.$player->name.' for game '.$this->id.PHP_EOL;
+                echo 'Failed to save player ' . $player->name . ' for game ' . $this->id . PHP_EOL;
                 return false;
             }
         }
         return true;
     }
 
-    public function hasScores() : bool {
+    public function hasScores(): bool
+    {
         return $this->game !== null;
     }
 
-    public function hasTeam(Team $team) : bool {
+    public function hasTeam(Team $team): bool
+    {
         foreach ($this->teams as $checkTeam) {
             if ($checkTeam instanceof GameTeam && $team->id === $checkTeam->team?->id) {
                 return true;

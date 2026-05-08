@@ -45,10 +45,10 @@ class Team extends BaseModel
         get {
             if (!isset($this->score)) {
                 $this->score = DB::select(GameTeam::TABLE, 'SUM([score])')
-                                 ->where('[id_team] = %i', $this->id)
-                                 ->fetchSingle(
-                                   false
-                                 ) ?? 0;
+                    ->where('[id_team] = %i', $this->id)
+                    ->fetchSingle(
+                        false
+                    ) ?? 0;
             }
             return $this->score;
         }
@@ -58,9 +58,9 @@ class Team extends BaseModel
         get {
             if (!isset($this->wins)) {
                 $this->wins = DB::select(GameTeam::TABLE, 'COUNT(*)')->where(
-                  '[id_team] = %i AND [points] = %i',
-                  $this->id,
-                  $this->tournament->points->win
+                    '[id_team] = %i AND [points] = %i',
+                    $this->id,
+                    $this->tournament->points->win
                 )->fetchSingle(false) ?? 0;
             }
             return $this->wins;
@@ -71,9 +71,9 @@ class Team extends BaseModel
         get {
             if (!isset($this->draws)) {
                 $this->draws = DB::select(GameTeam::TABLE, 'COUNT(*)')->where(
-                  '[id_team] = %i AND [points] = %i',
-                  $this->id,
-                  $this->tournament->points->draw
+                    '[id_team] = %i AND [points] = %i',
+                    $this->id,
+                    $this->tournament->points->draw
                 )->fetchSingle(false) ?? 0;
             }
             return $this->draws;
@@ -85,9 +85,9 @@ class Team extends BaseModel
         get {
             if (!isset($this->losses)) {
                 $this->losses = DB::select(GameTeam::TABLE, 'COUNT(*)')->where(
-                  '[id_team] = %i AND [points] = %i',
-                  $this->id,
-                  $this->tournament->points->loss
+                    '[id_team] = %i AND [points] = %i',
+                    $this->id,
+                    $this->tournament->points->loss
                 )->fetchSingle(false) ?? 0;
             }
             return $this->losses;
@@ -100,7 +100,7 @@ class Team extends BaseModel
     public array $groupKeys {
         get {
             $this->groupKeys ??= DB::select([GameTeam::TABLE, 'a'], 'b.id_group, a.key')->join(Game::TABLE, 'b')->on(
-              'a.id_game = b.id_game'
+                'a.id_game = b.id_game'
             )->where('a.id_team = %i', $this->id)->groupBy('id_group')->fetchPairs('id_group', 'key', false);
             return $this->groupKeys;
         }
@@ -121,14 +121,16 @@ class Team extends BaseModel
         }
     }
 
-    public function getScoreForGroup(Group $group) : int {
+    public function getScoreForGroup(Group $group): int
+    {
         $gameIds = array_map(static fn(Game $game) => $game->id, $group->games);
         return DB::select(GameTeam::TABLE, 'SUM([score])')
                  ->where('[id_team] = %i AND [id_game] IN %in', $this->id, $gameIds)
                  ->fetchSingle(false) ?? 0;
     }
 
-    public function getPointsForGroup(Group $group) : int {
+    public function getPointsForGroup(Group $group): int
+    {
         $gameIds = array_map(static fn(Game $game) => $game->id, $group->games);
         return DB::select(GameTeam::TABLE, 'SUM([points])')
                  ->where('[id_team] = %i AND [id_game] IN %in', $this->id, $gameIds)
@@ -138,7 +140,8 @@ class Team extends BaseModel
     /**
      * @return string|null
      */
-    public function getImageUrl() : ?string {
+    public function getImageUrl(): ?string
+    {
         if (empty($this->image)) {
             return null;
         }
@@ -149,7 +152,8 @@ class Team extends BaseModel
      * @return Game[]
      * @throws ValidationException
      */
-    public function getGamesAgainst(Team $team) : array {
+    public function getGamesAgainst(Team $team): array
+    {
         $games = [];
         foreach ($this->games as $game) {
             if ($game->hasTeam($team)) {
@@ -159,8 +163,9 @@ class Team extends BaseModel
         return $games;
     }
 
-    public function save() : bool {
-        echo 'Saving team '.($this->id ?? '<new>').PHP_EOL;
+    public function save(): bool
+    {
+        echo 'Saving team ' . ($this->id ?? '<new>') . PHP_EOL;
         return parent::save();
     }
 }

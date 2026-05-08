@@ -42,12 +42,11 @@ class GameTeam extends BaseModel
                         if ($this->key === $key) {
                             if (isset($progression->from)) {
                                 $this->name = sprintf(
-                                  lang('%d. tým ze skupiny: %s'),
-                                  $i + ($progression->start ?? 0) + 1,
-                                  $progression->from->name
+                                    lang('%d. tým ze skupiny: %s'),
+                                    $i + ($progression->start ?? 0) + 1,
+                                    $progression->from->name
                                 );
-                            }
-                            else {
+                            } else {
                                 $this->name = lang('Postupující tým');
                             }
                             return $this->name;
@@ -61,26 +60,24 @@ class GameTeam extends BaseModel
                         if ($this->key === $key) {
                             if (!empty($progression->from)) {
                                 $groupNames = array_map(
-                                  static fn(Group $group) => $group->name,
-                                  $progression->from,
+                                    static fn(Group $group) => $group->name,
+                                    $progression->from,
                                 );
                                 if ($progression->totalLength > 0) {
                                     $this->name = sprintf(
-                                      lang('Nejlepší %d týmy z %d. týmů ze skupin: %s', domain: 'tournament'),
-                                      $progression->totalLength,
-                                      $i + ($progression->start ?? 0) + 1,
-                                      implode(', ', $groupNames)
+                                        lang('Nejlepší %d týmy z %d. týmů ze skupin: %s', domain: 'tournament'),
+                                        $progression->totalLength,
+                                        $i + ($progression->start ?? 0) + 1,
+                                        implode(', ', $groupNames)
                                     );
-                                }
-                                else {
+                                } else {
                                     $this->name = sprintf(
-                                      lang('%d. tým ze skupin: %s', domain: 'tournament'),
-                                      $i + ($progression->start ?? 0) + 1,
-                                      implode(', ', $groupNames),
+                                        lang('%d. tým ze skupin: %s', domain: 'tournament'),
+                                        $i + ($progression->start ?? 0) + 1,
+                                        implode(', ', $groupNames),
                                     );
                                 }
-                            }
-                            else {
+                            } else {
                                 $this->name = lang('Postupující tým');
                             }
                             return $this->name;

@@ -51,12 +51,12 @@ class Player extends BaseModel
         get {
             if (!isset($this->vests)) {
                 $this->vests = DB::select(
-                  \App\GameModels\Game\Lasermaxx\Evo5\Player::TABLE,
-                  '[vest], COUNT(*) as [count]'
+                    \App\GameModels\Game\Lasermaxx\Evo5\Player::TABLE,
+                    '[vest], COUNT(*) as [count]'
                 )
-                                 ->where('id_tournament_player = %i', $this->id)
-                                 ->groupBy('vest')
-                                 ->fetchPairs('vest', 'count');
+                    ->where('id_tournament_player = %i', $this->id)
+                    ->groupBy('vest')
+                    ->fetchPairs('vest', 'count');
             }
             return $this->vests;
         }
@@ -65,11 +65,12 @@ class Player extends BaseModel
     /**
      * @return string|null
      */
-    public function getImageUrl() : ?string {
+    public function getImageUrl(): ?string
+    {
         if (empty($this->image)) {
             return null;
         }
-        return App::getInstance()->getBaseUrl().$this->image;
+        return App::getInstance()->getBaseUrl() . $this->image;
     }
 
     public function save(): bool

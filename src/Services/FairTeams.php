@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace LAC\Modules\Tournament\Services;
@@ -9,7 +10,6 @@ use Random\RandomException;
 
 class FairTeams
 {
-
     public const int MAX_ITERATIONS = 500;
     public const int MAX_ITERATIONS_WITHOUT_IMPROVEMENT = 40;
 
@@ -167,5 +167,4 @@ class FairTeams
         $team1->addPlayer($player2);
         $team2->addPlayer($player1);
     }
-
 }

@@ -63,11 +63,11 @@ class Tournament extends BaseModel
             }
             if (empty($this->teams)) {
                 $this->teams = Team::query()->where('id_tournament = %i', $this->id)
-                                   ->cacheTags(
-                                     'tournament-teams',
-                                     'tournament-'.$this->id.'-teams'
-                                   )
-                                   ->get();
+                    ->cacheTags(
+                        'tournament-teams',
+                        'tournament-' . $this->id . '-teams'
+                    )
+                    ->get();
             }
             return $this->teams;
         }
@@ -78,12 +78,12 @@ class Tournament extends BaseModel
         get {
             if (empty($this->players)) {
                 $this->players = Player::query()
-                                       ->where('id_tournament = %i', $this->id)
-                                       ->cacheTags(
-                                         'tournament-players',
-                                         'tournament-'.$this->id.'-players'
-                                       )
-                                       ->get();
+                    ->where('id_tournament = %i', $this->id)
+                    ->cacheTags(
+                        'tournament-players',
+                        'tournament-' . $this->id . '-players'
+                    )
+                    ->get();
             }
             return $this->players;
         }
@@ -96,14 +96,16 @@ class Tournament extends BaseModel
     /** @var MultiProgression[] */
     private array $multiProgressions = [];
 
-    public function getImageUrl() : ?string {
+    public function getImageUrl(): ?string
+    {
         if (!isset($this->image)) {
             return null;
         }
-        return App::getInstance()->getBaseUrl().$this->image;
+        return App::getInstance()->getBaseUrl() . $this->image;
     }
 
-    public function clearGames() : void {
+    public function clearGames(): void
+    {
         foreach ($this->getGames() as $game) {
             $game->delete();
         }
@@ -114,7 +116,8 @@ class Tournament extends BaseModel
      * @return Game[]
      * @throws ValidationException
      */
-    public function getGames() : array {
+    public function getGames(): array
+    {
         if (empty($this->games)) {
             $this->games = $this->queryGames()->get();
         }
@@ -124,18 +127,21 @@ class Tournament extends BaseModel
     /**
      * @return ModelQuery<Game>
      */
-    public function queryGames() : ModelQuery {
+    public function queryGames(): ModelQuery
+    {
         return Game::query()->where('id_tournament = %i', $this->id);
     }
 
-    public function clearGroups() : void {
+    public function clearGroups(): void
+    {
         foreach ($this->groups as $group) {
             $group->delete();
         }
         $this->groups = new ModelCollection();
     }
 
-    public function clearProgressions() : void {
+    public function clearProgressions(): void
+    {
         foreach ($this->getProgressions() as $progression) {
             $progression->delete();
         }
@@ -150,21 +156,24 @@ class Tournament extends BaseModel
      * @return Progression[]
      * @throws ValidationException
      */
-    public function getProgressions() : array {
+    public function getProgressions(): array
+    {
         if (empty($this->progressions)) {
             $this->progressions = Progression::query()->where('id_tournament = %i', $this->id)->get();
         }
         return $this->progressions;
     }
 
-    public function getMultiProgressions() : array {
+    public function getMultiProgressions(): array
+    {
         if (empty($this->multiProgressions)) {
             $this->multiProgressions = MultiProgression::query()->where('id_tournament = %i', $this->id)->get();
         }
         return $this->multiProgressions;
     }
 
-    public function getPlannedGame() : ?Game {
+    public function getPlannedGame(): ?Game
+    {
         $game = $this->queryGames()->where('[code] IS NULL')->orderBy('start')->first();
         return $game ?? $this->queryGames()->orderBy('start')->first();
     }
@@ -173,7 +182,8 @@ class Tournament extends BaseModel
      * @return GameGroup
      * @throws ValidationException
      */
-    public function getGroup() : GameGroup {
+    public function getGroup(): GameGroup
+    {
         if (!isset($this->group)) {
             $this->group = new GameGroup();
             $this->group->name = $this->name;

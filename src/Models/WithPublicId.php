@@ -22,7 +22,8 @@ trait WithPublicId
     }
 
     #[AfterUpdate, AfterInsert]
-    public function updatePublicIdMap() : void {
+    public function updatePublicIdMap(): void
+    {
         if ($this->idPublic !== null) {
             static::$publicIdMap[$this->idPublic] = $this;
         }

@@ -49,7 +49,7 @@ class TournamentProvider
         try {
             $response = $this->api->get('/api/leagues');
             /** @var ApiLeague[] $leagues */
-            $leagues = $this->serializer->deserialize($response->getBody(), ApiLeague::class.'[]', 'json');
+            $leagues = $this->serializer->deserialize($response->getBody(), ApiLeague::class . '[]', 'json');
             $this->logger->debug('Got ' . count($leagues) . ' leagues');
             bdump($leagues);
             foreach ($leagues as $league) {
@@ -72,7 +72,7 @@ class TournamentProvider
             // Sync tournaments
             $response = $this->api->get('/api/tournament');
             /** @var ApiTournament[] $tournaments */
-            $tournaments = $this->serializer->deserialize($response->getBody(), ApiTournament::class.'[]', 'json');
+            $tournaments = $this->serializer->deserialize($response->getBody(), ApiTournament::class . '[]', 'json');
             foreach ($tournaments as $tournament) {
                 $tournamentLocal = Tournament::getByPublicId($tournament->id);
                 if (!isset($tournamentLocal)) {
@@ -98,7 +98,7 @@ class TournamentProvider
                     ['withPlayers' => '1']
                 );
                 /** @var ApiTeam[] $teams */
-                $teams = $this->serializer->deserialize($response->getBody(), ApiTeam::class.'[]', 'json');
+                $teams = $this->serializer->deserialize($response->getBody(), ApiTeam::class . '[]', 'json');
                 foreach ($teams as $team) {
                     $teamLocal = Team::getByPublicId($team->id);
                     if (!isset($teamLocal)) {
@@ -114,7 +114,7 @@ class TournamentProvider
                     foreach ($team->players as $player) {
                         if (!isset($player->id)) {
                             $this->logger->error(
-                              'Invalid Player object - '.$this->serializer->serialize($player, 'json')
+                                'Invalid Player object - ' . $this->serializer->serialize($player, 'json')
                             );
                             continue;
                         }
@@ -807,8 +807,8 @@ class TournamentProvider
             // Get all progressions from this group
             $group = Group::get($groupRozlos->getId());
             $progressions = array_merge(
-              $group->progressionsFrom,
-              $group->multiProgressionsFrom
+                $group->progressionsFrom,
+                $group->multiProgressionsFrom
             );
             foreach ($progressions as $progression) {
                 $progressionRozlos = $progression->progression;

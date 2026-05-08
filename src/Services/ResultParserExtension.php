@@ -18,7 +18,8 @@ class ResultParserExtension implements ResultParserExtensionInterface
     /**
      * @inheritDoc
      */
-    public function parse(GameInterface $game, array $meta, AbstractResultsParser $parser) : void {
+    public function parse(GameInterface $game, array $meta, AbstractResultsParser $parser): void
+    {
         if (!empty($meta['tournament'])) {
             try {
                 $logger = new Logger(LOG_DIR . 'results/', 'import');

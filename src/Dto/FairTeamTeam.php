@@ -1,11 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace LAC\Modules\Tournament\Dto;
 
 class FairTeamTeam
 {
-
     public int $score {
         get {
             $score = 0;
@@ -46,5 +46,4 @@ class FairTeamTeam
         $index = array_rand($this->players);
         return $this->players[$index];
     }
-
 }

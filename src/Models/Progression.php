@@ -37,7 +37,8 @@ class Progression extends BaseModel
     /**
      * @return int[]
      */
-    public function getKeys() : array {
+    public function getKeys(): array
+    {
         if (empty($this->keysParsed) && !empty($this->keys)) {
             try {
                 $this->keysParsed = json_decode($this->keys, false, 512, JSON_THROW_ON_ERROR);
@@ -51,7 +52,8 @@ class Progression extends BaseModel
      * @param  int[]  $keys
      * @throws JsonException
      */
-    public function setKeys(array $keys) : Progression {
+    public function setKeys(array $keys): Progression
+    {
         $this->keysParsed = $keys;
         $this->keys = json_encode($keys, JSON_THROW_ON_ERROR);
         return $this;

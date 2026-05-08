@@ -1,11 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace LAC\Modules\Tournament\Services;
 
 class RandomTeamNames
 {
-
     private const array CZ_ADJECTIVES = [
         'hořící',
         'schopný',
@@ -583,5 +583,4 @@ class RandomTeamNames
         // Return a random name from the generated set
         return $names[array_rand($names)];
     }
-
 }
