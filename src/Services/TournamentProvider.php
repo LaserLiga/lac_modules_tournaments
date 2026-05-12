@@ -15,6 +15,7 @@ use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
 use LAC\Modules\Tournament\Models\League;
 use LAC\Modules\Tournament\Models\Player;
+use LAC\Modules\Tournament\Models\Progression;
 use LAC\Modules\Tournament\Models\Team;
 use LAC\Modules\Tournament\Models\Tournament;
 use LAC\Modules\Tournament\Models\TournamentPresetType;
@@ -605,7 +606,7 @@ class TournamentProvider
     }
 
     private function prepareTwoGroupsGamesBarrage(Tournament $tournament, TournamentGenerator $tournamentRozlos, int $baseGameCount = 3, int $maxBarrageRounds = 4): void {
-        $teams = $tournamentRozlos->teams->get();
+        $teams = $tournamentRozlos->getTeams();
         shuffle($teams);
 
         $baseRound = $tournamentRozlos->round(lang('Základní skupina', context: 'tournament'));
@@ -625,7 +626,7 @@ class TournamentProvider
             $teamGames = [];
             /** @var array<int|string,array<int|string,int>> $teamGamesWithTeams */
             $teamGamesWithTeams = [];
-            foreach ($baseGroup->teams as $team) {
+            foreach ($baseGroup->getTeams() as $team) {
                 $teamIds[$team->getId()] = $team;
                 $teamGames[$team->getId()] = 0;
                 $teamGamesWithTeams[$team->getId()] = [];
@@ -806,6 +807,7 @@ class TournamentProvider
 
             // Get all progressions from this group
             $group = Group::get($groupRozlos->getId());
+            /** @var Progression[] $progressions */
             $progressions = array_merge(
                 $group->progressionsFrom,
                 $group->multiProgressionsFrom
@@ -837,7 +839,7 @@ class TournamentProvider
 
                 // Update the games
                 $to = $progression->to;
-                foreach ($to->getGames() as $game) {
+                foreach ($to->games as $game) {
                     $changed = false;
                     // Assign progressed teams to games
                     foreach ($game->teams as $team) {
@@ -859,7 +861,7 @@ class TournamentProvider
             $progressed++;
 
             // Update group's teams
-            foreach ($groupRozlos->teams as $teamRozlos) {
+            foreach ($groupRozlos->getTeams() as $teamRozlos) {
                 $team = Team::get($teamRozlos->getId());
                 if (!isset($team)) {
                     continue;
