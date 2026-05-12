@@ -40,6 +40,7 @@ use Lsr\Lg\Results\Enums\GameModeType;
 use Lsr\Logging\Logger;
 use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Lsr\Orm\Exceptions\ModelNotFoundException;
+use Lsr\Orm\ModelCollection;
 use Psr\Http\Message\ResponseInterface;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\MultiProgression as MultiProgressionRozlos;
@@ -245,7 +246,7 @@ class TournamentController extends Controller
         foreach ($multiProgressions as $progressionRozlos) {
             $progression = new MultiProgression();
             $progression->tournament = $tournament;
-            $progression->from = [];
+            $progression->from = new ModelCollection([]);
             foreach ($progressionRozlos->getFrom() as $from) {
                 $progression->from[] = $groups[$from->getId()];
             }

@@ -2,16 +2,17 @@
 
 namespace LAC\Modules\Tournament\Models;
 
+use App\Models\BaseModel;
 use JsonException;
 use Lsr\Db\DB;
-use Lsr\Orm\Attributes\Relations\ManyToMany;
-use Lsr\Orm\Attributes\Relations\ManyToOne;
 use Lsr\Orm\Attributes\NoDB;
 use Lsr\Orm\Attributes\PrimaryKey;
-use Lsr\Orm\Model;
+use Lsr\Orm\Attributes\Relations\ManyToMany;
+use Lsr\Orm\Attributes\Relations\ManyToOne;
+use Lsr\Orm\ModelCollection;
 
 #[PrimaryKey('id_progression')]
-class MultiProgression extends \App\Models\BaseModel
+class MultiProgression extends BaseModel
 {
     use WithPublicId;
 
@@ -19,9 +20,9 @@ class MultiProgression extends \App\Models\BaseModel
 
     #[ManyToOne]
     public Tournament $tournament;
-    /** @var array|null */
+    /** @var ModelCollection<Group> */
     #[ManyToMany(through: 'tournament_multi_progressions_from', class: Group::class)]
-    public array $from = [];
+    public ModelCollection $from;
     #[ManyToOne('id_group', 'id_group_to')]
     public Group $to;
 
