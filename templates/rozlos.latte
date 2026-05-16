@@ -97,14 +97,16 @@
             </div>
             <input type="hidden" name="teams_selection" value="1">
             <div class="d-flex flex-wrap gap-2">
-                <input n:foreach="$teams as $team" type="checkbox" class="btn-check tournament-team-toggle"
-                                                   name="teams_active[]" value="{$team->id}"
-                                                   id="tournament-team-active-{$team->id}"
-                                                   autocomplete="off" checked>
-                <label n:foreach="$teams as $team" class="btn btn-outline-secondary"
-                                                   for="tournament-team-active-{$team->id}">
-                    {$team->name}
-                </label>
+                {foreach $teams as $team}
+                    <input type="checkbox" class="btn-check tournament-team-toggle"
+                           name="teams_active[]" value="{$team->id}"
+                           id="tournament-team-active-{$team->id}"
+                           autocomplete="off" checked>
+                    <label class="btn btn-outline-secondary"
+                           for="tournament-team-active-{$team->id}">
+                        {$team->name}
+                    </label>
+                {/foreach}
             </div>
             <div class="form-text">
                 {_'Odškrtnuté týmy nebudou zařazeny do rozlosování.', domain: 'tournament'}
