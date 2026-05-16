@@ -2,6 +2,7 @@
 
 namespace LAC\Modules\Tournament\Services;
 
+use App\Core\App;
 use App\GameModels\Game\Game;
 use App\GameModels\Game\Player;
 use App\GameModels\Game\Team;
@@ -37,7 +38,12 @@ class GameDataExtension implements GameDataExtensionInterface
     public function save(Game|Team|Player $game): bool {
         if (isset($game->tournamentGame)) {
             $game->tournamentGame->code = $game->code;
-            return $game->tournamentGame->save();
+            if (!$game->tournamentGame->save()) {
+                return false;
+            }
+
+            $tournamentProvider = App::getServiceByType(TournamentProvider::class);
+            $tournamentProvider->recalcTeamPoints($game->tournamentGame->tournament);
         }
         return true;
     }

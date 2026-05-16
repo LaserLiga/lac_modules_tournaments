@@ -1,0 +1,135 @@
+{layout '../../../../templates/gate/@layout.latte'}
+
+{varType LAC\Modules\Tournament\Models\Tournament $tournament}
+{varType LAC\Modules\Tournament\Models\Team[] $teams}
+{varType array $stats}
+{varType array $teamNextGames}
+{varType int[] $prepareTeamIds}
+{varType int[] $playingTeamIds}
+
+{define containerClasses}
+    tournament tournament-standings-only
+{/define}
+
+{define teamLogo, LAC\Modules\Tournament\Models\Team $team}
+    {var string $logoUrl = $team->getImageUrl() ?? '/assets/images/gate/questionmark.jpg'}
+    <img src="{$logoUrl}" alt="{$team->name}" class="team-logo object-fit-cover rounded-circle">
+{/define}
+
+{define statItem, string $label, int $value}
+    <div class="standing-stat">
+        <span>{$label}</span>
+        <strong>{$value}</strong>
+    </div>
+{/define}
+
+{define teamStats, LAC\Modules\Tournament\Models\Team $team, array $teamStats}
+    <div class="standing-stats">
+        {include statItem, label: lang('Výhry', domain: 'tournament'), value: $teamStats['wins'] ?? 0}
+		{if $tournament->teamsInGame > 2}
+            {include statItem, label: '2. místa', value: $teamStats['seconds'] ?? 0}
+        {/if}
+		{if $tournament->teamsInGame > 3}
+            {include statItem, label: '3. místa', value: $teamStats['thirds'] ?? 0}
+        {/if}
+		{include statItem, label: lang('Remízy', domain: 'tournament'), value: $teamStats['draws'] ?? 0}
+		{include statItem, label: lang('Prohry', domain: 'tournament'), value: $teamStats['losses'] ?? 0}
+    </div>
+{/define}
+
+{define nextGameInfo, LAC\Modules\Tournament\Models\Game|null $nextGame, bool $prepare, bool $playing}
+    <div n:class="standing-next-game, $prepare ? prepare, $playing ? playing">
+        {if $playing}
+            <span>{_'Hraje', domain: 'tournament'}</span>
+        {elseif $prepare}
+            <span>{_'Další', domain: 'tournament'}</span>
+        {elseif $nextGame !== null}
+            <span>{_'Hra', domain: 'tournament'}</span>
+        {else}
+            <span>{_'Konec', domain: 'tournament'}</span>
+        {/if}
+        <strong n:if="!$playing && $nextGame !== null">
+            {$nextGame->start->format('H:i')}
+        </strong>
+    </div>
+{/define}
+
+{define podiumTeam, LAC\Modules\Tournament\Models\Team $team, int $rank}
+    {var array $teamStats = $stats[$team->id] ?? ['wins' => 0, 'seconds' => 0, 'thirds' => 0, 'draws' => 0, 'losses' => 0]}
+    {var LAC\Modules\Tournament\Models\Game|null $nextGame = $teamNextGames[$team->id] ?? null}
+    {var bool $prepare = in_array($team->id, $prepareTeamIds, true)}
+    {var bool $playing = in_array($team->id, $playingTeamIds, true)}
+    <article n:class="standing-podium-card, 'rank-' . $rank, $prepare ? 'prepare-next', $playing ? 'playing-now'">
+        <div class="standing-rank">#{$rank}</div>
+        {include teamLogo, team: $team}
+
+        <div class="standing-team-name">{$team->name}</div>
+
+        <div class="standing-points">
+                <strong>{$team->points}</strong>
+                <span>{_'bod', plural: 'bodů', num: $team->points, domain: 'tournament'}</span>
+		</div>
+
+        <div class="standing-score">
+                <span>{_'Skóre', domain: 'tournament'}</span>
+                <strong>{$team->score|number:0,',','&nbsp;'|noescape}</strong>
+		</div>
+		{include teamStats, team: $team, teamStats: $teamStats}
+		{include nextGameInfo, nextGame: $nextGame, prepare: $prepare, playing: $playing}
+    </article>
+{/define}
+
+{define rankedTeam, LAC\Modules\Tournament\Models\Team $team, int $rank}
+    {var array $teamStats = $stats[$team->id] ?? ['wins' => 0, 'seconds' => 0, 'thirds' => 0, 'draws' => 0, 'losses' => 0]}
+    {var LAC\Modules\Tournament\Models\Game|null $nextGame = $teamNextGames[$team->id] ?? null}
+    {var bool $prepare = in_array($team->id, $prepareTeamIds, true)}
+    {var bool $playing = in_array($team->id, $playingTeamIds, true)}
+    <article n:class="standing-row-card, $prepare ? 'prepare-next', $playing ? 'playing-now'">
+        <div class="standing-row-rank">#{$rank}</div>
+        {include teamLogo, team: $team}
+
+        <div class="standing-row-main">
+                <div class="standing-team-name">{$team->name}</div>
+                {include teamStats, team: $team, teamStats: $teamStats}
+		</div>
+		{include nextGameInfo, nextGame: $nextGame, prepare: $prepare, playing: $playing}
+        <div class="standing-row-points">
+            <strong>{$team->points}</strong>
+            <span>{_'bod', plural: 'bodů', num: $team->points, domain: 'tournament'}</span>
+        </div>
+        <div class="standing-row-score">
+            <strong>{$team->score|number:0,',','&nbsp;'|noescape}</strong>
+            <span>{_'Skóre', domain: 'tournament'}</span>
+        </div>
+    </article>
+{/define}
+
+{define content}
+    <header class="tournament-screen-header">
+        <h1>{$tournament->name}</h1>
+        <h2>{_'Průběžné pořadí', domain: 'tournament'}</h2>
+    </header>
+
+    <section class="tournament-panel tournament-standings-board">
+        {var array $podiumTeams = array_slice($teams, 0, 3)}
+		{var array $remainingTeams = array_slice($teams, 3)}
+
+        <div class="standing-podium" n:if="count($podiumTeams) > 0">
+            {if isset($podiumTeams[1])}
+                {include podiumTeam, team: $podiumTeams[1], rank: 2}
+            {/if}
+			{if isset($podiumTeams[0])}
+                {include podiumTeam, team: $podiumTeams[0], rank: 1}
+            {/if}
+			{if isset($podiumTeams[2])}
+                {include podiumTeam, team: $podiumTeams[2], rank: 3}
+            {/if}
+        </div>
+
+        <div class="standing-row-grid" n:if="count($remainingTeams) > 0">
+            {foreach $remainingTeams as $team}
+                {include rankedTeam, team: $team, rank: $iterator->counter + 3}
+            {/foreach}
+        </div>
+    </section>
+{/define}

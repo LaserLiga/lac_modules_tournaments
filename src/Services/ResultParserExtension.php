@@ -2,7 +2,6 @@
 
 namespace LAC\Modules\Tournament\Services;
 
-use App\Core\App;
 use LAC\Modules\Tournament\Models\Game as TournamentGame;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
@@ -108,10 +107,6 @@ class ResultParserExtension implements ResultParserExtensionInterface
                     $player->tournamentPlayer = TournamentPlayer::get((int)$meta['p' . $player->vest . 'tournament']);
                 }
 
-                // Recalculate points for all tournament teams
-                $tournamentProvider = App::getServiceByType(TournamentProvider::class);
-                $logger->debug('Tournament parser extension recalculating team points', ['tournament' => $tournament->id ?? null]);
-                $tournamentProvider->recalcTeamPoints($tournament);
                 $logger->debug('Tournament parser extension finished', ['tournament' => $tournament->id ?? null]);
             } catch (ModelNotFoundException) {
             }

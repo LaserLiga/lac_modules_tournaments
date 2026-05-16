@@ -129,7 +129,7 @@ class Tournament extends BaseModel
      */
     public function queryGames(): ModelQuery
     {
-        return Game::query()->where('id_tournament = %i', $this->id);
+        return Game::query()->where('id_tournament = %i', $this->id)->orderBy('start');
     }
 
     public function clearGroups(): void

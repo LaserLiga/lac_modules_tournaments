@@ -1,0 +1,184 @@
+{layout '../../../templates/@layout.latte'}
+
+{varType LAC\Modules\Tournament\Models\Tournament $tournament}
+{varType LAC\Modules\Tournament\Models\Game[] $games}
+{varType App\GameModels\Game\Game[] $unpairedGames}
+{varType App\GameModels\Game\Game|null $selectedResultGame}
+{varType LAC\Modules\Tournament\Models\Game|null $selectedTournamentGame}
+{varType string $selectedResultCode}
+{varType int $selectedGameId}
+{varType array<string,string> $bracketLegend}
+
+{block content}
+    <p>
+        <a href="{link 'tournament', (string) $tournament->id}" class="btn btn-warning">
+            {faSolid 'caret-left'} {_'Zpět'}
+        </a>
+    </p>
+
+    <h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
+    <h3>{_'Nástroje', domain: 'tournament'}</h3>
+
+    <section class="card my-4">
+        <div class="card-header">
+            <h4 class="mb-0">{_'Párování importované hry', domain: 'tournament'}</h4>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{link 'tournament', (string) $tournament->id, 'ops'}"
+                  class="row g-3 align-items-end mb-4">
+                <div class="col-12 col-lg-5">
+                    <label for="result"
+                           class="form-label">{_'Importovaná hra bez turnaje', domain: 'tournament'}</label>
+                    <select name="result" id="result" class="form-select">
+                        <option value="">{_'Vybrat hru', domain: 'tournament'}</option>
+                        <option n:if="$selectedResultGame !== null"
+                                value="{$selectedResultGame->code}"
+                                selected>
+                            {$selectedResultGame->start?->format('H:i')} - {$selectedResultGame->code}
+                        </option>
+                        <option n:foreach="$unpairedGames as $resultGame"
+                                value="{$resultGame->code}"
+                                n:attr="selected: $resultGame->code === $selectedResultCode">
+                            {$resultGame->start?->format('H:i')} - {$resultGame->code}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-5">
+                    <label for="tournament-game" class="form-label">{_'Turnajová hra', domain: 'tournament'}</label>
+                    <select name="tournament_game" id="tournament-game" class="form-select">
+                        <option value="">{_'Vybrat hru', domain: 'tournament'}</option>
+                        <option n:foreach="$games as $game"
+                                value="{$game->id}"
+                                n:attr="selected: $selectedGameId === $game->id">
+                            {$game->start->format('H:i')} - {$game->group?->name}
+                            ({foreach $game->teams as $slot}{$slot->name}{sep}, {/sep}{/foreach})
+                        </option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-2">
+                    <button type="submit" class="btn btn-primary w-100">{_'Načíst', domain: 'tournament'}</button>
+                </div>
+            </form>
+
+            {if $selectedResultGame !== null && $selectedTournamentGame !== null}
+                <form method="post" action="{link 'tournament', (string) $tournament->id, 'ops', 'pair'}">
+                    <input type="hidden" name="result_code" value="{$selectedResultGame->code}">
+                    <input type="hidden" name="tournament_game" value="{$selectedTournamentGame->id}">
+
+                    <h5>{_'Týmy', domain: 'tournament'}</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                            <tr>
+                                <th>{_'Importovaný tým', domain: 'tournament'}</th>
+                                <th>{_'Turnajový slot', domain: 'tournament'}</th>
+                                <th>{_'Skóre', domain: 'tournament'}</th>
+                                <th>{_'Pozice', domain: 'tournament'}</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr n:foreach="$selectedResultGame->teams as $sourceTeam">
+                                <td>
+                                    <strong>{$sourceTeam->name}</strong>
+                                    <span class="text-muted">#{$sourceTeam->color}</span>
+                                </td>
+                                <td>
+                                    <select name="team_map[{$sourceTeam->id}]" class="form-select form-select-sm">
+                                        <option value="">{_'Nepárovat', domain: 'tournament'}</option>
+                                        <option n:foreach="$selectedTournamentGame->teams as $slot"
+                                                value="{$slot->id}"
+                                                n:attr="selected: $sourceTeam->tournamentTeam?->id === $slot->team?->id">
+                                            {$slot->name}
+                                        </option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="score[{$sourceTeam->id}]"
+                                           class="form-control form-control-sm"
+                                           value="{$sourceTeam->score}">
+                                </td>
+                                <td>
+                                    <input type="number" name="position[{$sourceTeam->id}]"
+                                           class="form-control form-control-sm"
+                                           value="{$sourceTeam->position}" min="1" max="{$tournament->teamsInGame}">
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h5>{_'Hráči', domain: 'tournament'}</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                            <tr>
+                                <th>{_'Importovaný hráč', domain: 'tournament'}</th>
+                                <th>{_'Turnajový hráč', domain: 'tournament'}</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr n:foreach="$selectedResultGame->players as $sourcePlayer">
+                                <td>
+                                    <strong>{$sourcePlayer->name}</strong>
+                                    <span class="text-muted">{$sourcePlayer->vest}</span>
+                                </td>
+                                <td>
+                                    <select name="player_map[{$sourcePlayer->id}]" class="form-select form-select-sm">
+                                        <option value="">{_'Nepárovat', domain: 'tournament'}</option>
+                                        <option n:foreach="$tournament->players as $player"
+                                                value="{$player->id}"
+                                                n:attr="selected: $sourcePlayer->tournamentPlayer?->id === $player->id">
+                                            {$player->nickname}
+                                        </option>
+                                    </select>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="overwrite" value="1" class="form-check-input" id="overwrite">
+                        <label for="overwrite" class="form-check-label">
+                            {_'Povolit přepsání cílové hry, která už má výsledky', domain: 'tournament'}
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        {_'Spárovat a uložit výsledky', domain: 'tournament'}
+                    </button>
+                </form>
+            {else}
+                <div class="alert alert-info mb-0">
+                    {_'Vyberte importovanou hru a cílovou turnajovou hru.', domain: 'tournament'}
+                </div>
+            {/if}
+        </div>
+    </section>
+
+    <section class="card my-4">
+        <div class="card-header">
+            <h4 class="mb-0">{_'Obnova turnaje', domain: 'tournament'}</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{link 'tournament', (string) $tournament->id, 'ops', 'recover'}">
+                <p>{_'Přepočítá body, znovu aplikuje dostupné postupy a vyčistí turnajové cache.', domain: 'tournament'}</p>
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="sync" value="1" class="form-check-input" id="sync">
+                    <label for="sync"
+                           class="form-check-label">{_'Synchronizovat hry do LaserLigy', domain: 'tournament'}</label>
+                </div>
+                <button type="submit" class="btn btn-danger">{_'Spustit obnovu', domain: 'tournament'}</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="card my-4">
+        <div class="card-header">
+            <h4 class="mb-0">{_'Legenda stavu pavouka', domain: 'tournament'}</h4>
+        </div>
+        <div class="card-body d-flex flex-wrap gap-2">
+            <span n:foreach="$bracketLegend as $status => $label" class="badge text-bg-secondary">{$status}: {$label}</span>
+        </div>
+    </section>
+{/block}

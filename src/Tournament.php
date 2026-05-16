@@ -8,7 +8,10 @@ use App\Gate\Models\GateType;
 use App\Gate\Screens\Results\ResultsScreen;
 use App\Gate\Settings\ResultsSettings;
 use LAC\Modules\Core\Module;
+use LAC\Modules\Tournament\Gate\Screens\TournamentGamesScreen;
+use LAC\Modules\Tournament\Gate\Screens\TournamentPlayersScreen;
 use LAC\Modules\Tournament\Gate\Screens\TournamentResultsScreen;
+use LAC\Modules\Tournament\Gate\Screens\TournamentStandingsScreen;
 
 class Tournament extends Module
 {
@@ -23,8 +26,23 @@ class Tournament extends Module
                 ->setLocked(true)
                      ->setDescription('Základní výsledková tabule turnajových výsledků');
 
+            $games = new GateScreenModel();
+            $games->setOrder(90)
+                ->setScreenSerialized(TournamentGamesScreen::getDiKey())
+                ->setTrigger(ScreenTriggerType::DEFAULT);
+
+            $standings = new GateScreenModel();
+            $standings->setOrder(95)
+                ->setScreenSerialized(TournamentStandingsScreen::getDiKey())
+                ->setTrigger(ScreenTriggerType::DEFAULT);
+
+            $players = new GateScreenModel();
+            $players->setOrder(100)
+                ->setScreenSerialized(TournamentPlayersScreen::getDiKey())
+                ->setTrigger(ScreenTriggerType::DEFAULT);
+
             $idle = new GateScreenModel();
-            $idle->setOrder(99)
+            $idle->setOrder(105)
                  ->setScreenSerialized(TournamentResultsScreen::getDiKey())
                  ->setTrigger(ScreenTriggerType::DEFAULT);
 
@@ -34,11 +52,31 @@ class Tournament extends Module
                     ->setScreenSerialized(ResultsScreen::getDiKey())
                     ->setSettings(new ResultsSettings());
 
-            $gateType->addScreenModel($idle, $results);
+            $gateType->addScreenModel($games, $standings, $players, $idle, $results);
 
             $gateType->save();
         }
 
+        $this->addScreenIfMissing($gateType, TournamentGamesScreen::getDiKey(), 90);
+        $this->addScreenIfMissing($gateType, TournamentStandingsScreen::getDiKey(), 95);
+        $this->addScreenIfMissing($gateType, TournamentPlayersScreen::getDiKey(), 100);
+        $gateType->save();
+
         parent::install();
+    }
+
+    private function addScreenIfMissing(GateType $gateType, string $screen, int $order): void
+    {
+        foreach ($gateType->screens as $screenModel) {
+            if ($screenModel->screenSerialized === $screen) {
+                return;
+            }
+        }
+
+        $screenModel = new GateScreenModel();
+        $screenModel->setOrder($order)
+            ->setScreenSerialized($screen)
+            ->setTrigger(ScreenTriggerType::DEFAULT);
+        $gateType->addScreenModel($screenModel);
     }
 }

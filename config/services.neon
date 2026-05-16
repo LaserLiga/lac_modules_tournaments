@@ -38,6 +38,9 @@ services:
 	randomTeamNames: LAC\Modules\Tournament\Services\RandomTeamNames
 
 	gate.tournament.results: LAC\Modules\Tournament\Gate\Screens\TournamentResultsScreen
+	gate.tournament.games: LAC\Modules\Tournament\Gate\Screens\TournamentGamesScreen
+	gate.tournament.standings: LAC\Modules\Tournament\Gate\Screens\TournamentStandingsScreen
+	gate.tournament.players: LAC\Modules\Tournament\Gate\Screens\TournamentPlayersScreen
 search:
 	tournament.controllers:
 		in: %tournament.root%src/Controllers

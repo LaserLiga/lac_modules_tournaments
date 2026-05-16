@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace LAC\Modules\Tournament\Dto;
 
-use App\Api\DataObjects\LigaPlayer\LigaPlayerData;
 use LAC\Modules\Tournament\Models\PlayerSkill;
+use Lsr\LaserLiga\DataObjects\LigaPlayer\LigaPlayerData;
 
 class ApiPlayer
 {

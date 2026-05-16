@@ -35,6 +35,7 @@ use Lsr\Core\Controllers\Controller;
 use Lsr\Core\Requests\Dto\SuccessResponse;
 use Lsr\Core\Requests\Request;
 use Lsr\Core\Templating\Latte;
+use Lsr\Db\DB;
 use Lsr\Interfaces\SessionInterface;
 use Lsr\Lg\Results\Enums\GameModeType;
 use Lsr\Logging\Logger;
@@ -42,6 +43,8 @@ use Lsr\ObjectValidation\Exceptions\ValidationException;
 use Lsr\Orm\Exceptions\ModelNotFoundException;
 use Lsr\Orm\ModelCollection;
 use Psr\Http\Message\ResponseInterface;
+use RuntimeException;
+use Throwable;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\MultiProgression as MultiProgressionRozlos;
 use TournamentGenerator\Progression as ProgressionRozlos;
@@ -53,13 +56,17 @@ class TournamentController extends Controller
 {
     public const array EVO5_TEAM_COLORS = [0 => 1, 1 => 2, 2 => 0, 3 => 3, 4 => 4, 5 => 5];
 
+    private Logger $logger;
+
     public function __construct(
         Latte                               $latte,
         private readonly TournamentProvider $tournamentProvider,
         private readonly GameLoader         $gameLoader,
         private readonly SessionInterface   $session,
         private readonly RandomTeamNames    $teamNames,
-    ) {
+    )
+    {
+        $this->logger = new Logger(LOG_DIR . 'controllers/', 'tournament');
     }
 
     public function index(): ResponseInterface
@@ -71,12 +78,12 @@ class TournamentController extends Controller
     public function oldTournaments(): ResponseInterface
     {
         $this->params['tournaments'] = Tournament::query()
-                                                 ->where('[active] = 1 AND DATE([start]) < CURDATE()')
-                                                 ->orderBy(
-                                                     'start'
-                                                 )
-                                                 ->desc()
-                                                 ->get();
+            ->where('[active] = 1 AND DATE([start]) < CURDATE()')
+            ->orderBy(
+                'start'
+            )
+            ->desc()
+            ->get();
         return $this->view('../modules/Tournament/templates/old');
     }
 
@@ -92,30 +99,290 @@ class TournamentController extends Controller
         $this->params['groups'] = $tournament->groups;
         $this->params['teams'] = $tournament->teams;
         $this->params['games'] = $tournament->getGames();
-        $this->params['addJs'] = ['modules/tournament/rozlos.js'];
+        $this->params['addGameStart'] = $this->getDefaultNewGameStart($tournament);
+        $this->params['mermaidBracket'] = $this->tournamentProvider->buildMermaidBracket($tournament);
+        $this->params['bracketLegend'] = $this->tournamentProvider->getBracketStatusLegend();
+        $this->params['progressionControls'] = $this->buildProgressionControls($tournament);
+        $this->params['addJs'] = ['modules/tournament/rozlos.js', 'modules/tournament/bracket.js'];
         return $this->view('../modules/Tournament/templates/rozlos');
+    }
+
+    private function getDefaultNewGameStart(Tournament $tournament): DateTimeImmutable
+    {
+        $games = $tournament->getGames();
+        if (empty($games)) {
+            return DateTimeImmutable::createFromInterface($tournament->start);
+        }
+
+        usort(
+            $games,
+            static fn(Game $a, Game $b) => $a->start <=> $b->start ?: $a->id <=> $b->id
+        );
+
+        return DateTimeImmutable::createFromInterface(end($games)->start)
+            ->add(new DateInterval('PT' . ($tournament->gameLength + $tournament->gamePause) . 'M'));
+    }
+
+    /**
+     * @return array<int,array{
+     *     type:string,
+     *     id:int,
+     *     from:string,
+     *     to:string,
+     *     rule:string,
+     *     points:int,
+     *     locked:bool,
+     *     slots:array<int,array{key:int,label:string,team:?TournamentTeam,locked:bool}>
+     * }>
+     */
+    private function buildProgressionControls(Tournament $tournament): array
+    {
+        $controls = [];
+        foreach ($tournament->getProgressions() as $progression) {
+            $controls[] = $this->buildProgressionControl(
+                'progression',
+                $progression->id,
+                $progression->from?->name ?? lang('Postup', domain: 'tournament'),
+                $progression->to,
+                $this->getProgressionRuleLabel($progression),
+                $progression->points,
+                $progression->getKeys()
+            );
+        }
+        foreach ($tournament->getMultiProgressions() as $progression) {
+            $from = array_map(
+                static fn(Group $group) => $group->name,
+                iterator_to_array($progression->from)
+            );
+            $controls[] = $this->buildProgressionControl(
+                'multi',
+                $progression->id,
+                implode(', ', $from),
+                $progression->to,
+                $this->getMultiProgressionRuleLabel($progression),
+                $progression->points,
+                $progression->getKeys()
+            );
+        }
+
+        return $controls;
+    }
+
+    /**
+     * @param int[] $keys
+     *
+     * @return array{
+     *     type:string,
+     *     id:int,
+     *     from:string,
+     *     to:string,
+     *     rule:string,
+     *     points:int,
+     *     locked:bool,
+     *     slots:array<int,array{key:int,label:string,team:?TournamentTeam,locked:bool}>
+     * }
+     */
+    private function buildProgressionControl(
+        string $type,
+        int    $id,
+        string $from,
+        Group  $to,
+        string $rule,
+        int    $points,
+        array  $keys
+    ): array
+    {
+        $slots = [];
+        foreach ($keys as $key) {
+            $slots[$key] = [
+                'key' => $key,
+                'label' => sprintf(lang('Slot %d', domain: 'tournament'), $key),
+                'team' => null,
+                'locked' => false,
+            ];
+        }
+
+        foreach ($to->games as $game) {
+            foreach ($game->teams as $gameTeam) {
+                if (!isset($slots[$gameTeam->key])) {
+                    continue;
+                }
+                $slots[$gameTeam->key]['label'] = $gameTeam->name;
+                if (isset($gameTeam->team)) {
+                    $slots[$gameTeam->key]['team'] = $gameTeam->team;
+                }
+                if (
+                    $game->hasScores()
+                ) {
+                    $slots[$gameTeam->key]['locked'] = true;
+                }
+            }
+        }
+
+        $locked = false;
+        foreach ($slots as $slot) {
+            if ($slot['locked']) {
+                $locked = true;
+                break;
+            }
+        }
+
+        return [
+            'type' => $type,
+            'id' => $id,
+            'from' => $from,
+            'to' => $to->name,
+            'rule' => $rule,
+            'points' => $points,
+            'locked' => $locked,
+            'slots' => $slots,
+        ];
+    }
+
+    private function getProgressionRuleLabel(Progression $progression): string
+    {
+        $length = $progression->length ?? count($progression->getKeys());
+        return sprintf(
+            lang('Postoupí %d %s od %d. místa', domain: 'tournament'),
+            $length,
+            $length === 1 ? lang('tým', domain: 'tournament') : lang('týmy', domain: 'tournament'),
+            ($progression->start ?? 0) + 1
+        );
+    }
+
+    private function getMultiProgressionRuleLabel(MultiProgression $progression): string
+    {
+        $sourceLength = $progression->length ?? 1;
+        $totalLength = $progression->totalLength ?? count($progression->getKeys());
+        if ($sourceLength === 1) {
+            return sprintf(
+                lang('Postoupí nejlepší %d %s z %d. míst', domain: 'tournament'),
+                $totalLength,
+                $totalLength === 1 ? lang('tým', domain: 'tournament') : lang('týmy', domain: 'tournament'),
+                ($progression->start ?? 0) + 1
+            );
+        }
+
+        return sprintf(
+            lang('Postoupí nejlepší %d %s z týmů od %d. místa', domain: 'tournament'),
+            $totalLength,
+            $totalLength === 1 ? lang('tým', domain: 'tournament') : lang('týmy', domain: 'tournament'),
+            ($progression->start ?? 0) + 1
+        );
+    }
+
+    public function ops(Tournament $tournament, Request $request): ResponseInterface
+    {
+        $this->params['tournament'] = $tournament;
+        $this->params['games'] = $tournament->getGames();
+        $this->params['unpairedGames'] = $this->tournamentProvider->getUnpairedResultGames($tournament);
+        $this->params['selectedResultCode'] = (string)$request->getGet('result', '');
+        $this->params['selectedGameId'] = (int)$request->getGet('tournament_game', 0);
+        $this->params['selectedResultGame'] = !empty($this->params['selectedResultCode'])
+            ? $this->tournamentProvider->getResultGameByCode($this->params['selectedResultCode'])
+            : null;
+        $this->params['selectedTournamentGame'] = null;
+        if ($this->params['selectedGameId'] > 0) {
+            try {
+                $selectedTournamentGame = Game::get($this->params['selectedGameId']);
+                if ($selectedTournamentGame->tournament->id === $tournament->id) {
+                    $this->params['selectedTournamentGame'] = $selectedTournamentGame;
+                }
+            } catch (ModelNotFoundException) {
+            }
+        }
+        $this->params['bracketLegend'] = $this->tournamentProvider->getBracketStatusLegend();
+        return $this->view('../modules/Tournament/templates/ops');
+    }
+
+    public function opsPairImportedGame(Tournament $tournament, Request $request): ResponseInterface
+    {
+        $code = (string)$request->getPost('result_code', '');
+        $targetGame = $request->getPost('tournament_game');
+        if (empty($code) || !is_numeric($targetGame)) {
+            $request->addPassError(lang('Vyberte importovanou i turnajovou hru', domain: 'tournament'));
+            return $this->app->redirect(['tournament', $tournament->id, 'ops'], $request);
+        }
+
+        try {
+            $result = $this->tournamentProvider->pairImportedGame(
+                $tournament,
+                $code,
+                (int)$targetGame,
+                is_array($request->getPost('team_map')) ? $request->getPost('team_map') : [],
+                is_array($request->getPost('score')) ? $request->getPost('score') : [],
+                is_array($request->getPost('position')) ? $request->getPost('position') : [],
+                is_array($request->getPost('player_map')) ? $request->getPost('player_map') : [],
+                $request->getPost('overwrite') !== null
+            );
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang(
+                    'Hra byla spárována. Týmů: %d, hráčů: %d',
+                    domain: 'tournament',
+                    format: [$result['teams'], $result['players']]
+                ),
+            ];
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            $request->addPassError($e->getMessage());
+        }
+
+        return $this->app->redirect(['tournament', $tournament->id, 'ops'], $request);
+    }
+
+    public function opsRecover(Tournament $tournament, Request $request): ResponseInterface
+    {
+        try {
+            $result = $this->tournamentProvider->recoverTournament($tournament, $request->getPost('sync') !== null);
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang(
+                    'Obnova dokončena. Postoupeno skupin: %d',
+                    domain: 'tournament',
+                    format: [$result['progressed']]
+                ),
+            ];
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            $request->addPassError($e->getMessage());
+        }
+        return $this->app->redirect(['tournament', $tournament->id, 'ops'], $request);
     }
 
     public function rozlosProcess(Tournament $tournament, Request $request): ResponseInterface
     {
-        $teams = $tournament->teams;
+        $teams = $this->getActiveTournamentTeams($tournament, $request);
+        if (count($teams) < $tournament->teamsInGame) {
+            $request->addPassError(
+                lang('Pro rozlosování není vybrán dostatečný počet týmů.', domain: 'tournament')
+            );
+            return $this->bracketActionResponse($tournament, $request);
+        }
+        $tournament->teams = $teams;
         $type = TournamentPresetType::tryFrom($request->getPost('tournament-type', ''));
         if ($type === null) {
             $request->addPassError(lang('Neplatný typ turnaje'));
-            return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
+            return $this->bracketActionResponse($tournament, $request);
         }
-        $tournament->gameLength = (int) $request->getPost('game-length', 15);
-        $tournament->gamePause = (int) $request->getPost('game-pause', 5);
-        $tournamentStart = (int) $request->getPost('tournament-start', 30);
-        $iterations = (int) $request->getPost('game-repeat', 1);
+        $tournament->gameLength = (int)$request->getPost('game-length', 15);
+        $tournament->gamePause = (int)$request->getPost('game-pause', 5);
+        $tournamentStart = (int)$request->getPost('tournament-start', 30);
+        $iterations = (int)$request->getPost('game-repeat', 1);
         $args = $request->getPost('args', []);
 
-        $tournamentRozlos = $this->tournamentProvider->createTournamentFromPreset(
-            $type,
-            $tournament,
-            $iterations,
-            is_array($args) ? $args : [],
-        );
+        try {
+            $tournamentRozlos = $this->tournamentProvider->createTournamentFromPreset(
+                $type,
+                $tournament,
+                $iterations,
+                is_array($args) ? $args : [],
+            );
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            $request->addPassError($e->getMessage());
+            return $this->bracketActionResponse($tournament, $request);
+        }
 
         $this->tournamentProvider->reset($tournament);
 
@@ -235,6 +502,9 @@ class TournamentController extends Controller
             }
             if ($count > 0) {
                 for ($i = 0; $i < $count; $i++) {
+                    if (!isset($groupTeamKey[$progression->to->id])) {
+                        break;
+                    }
                     $keys[] = array_shift($groupTeamKey[$progression->to->id]);
                 }
             }
@@ -271,16 +541,324 @@ class TournamentController extends Controller
         }
         echo 'Rozlos done...' . PHP_EOL;
         $request->passNotices[] = ['type' => 'success', 'content' => lang('Vygenerováno')];
-        return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
+        return $this->bracketActionResponse($tournament, $request);
+    }
+
+    /**
+     * @return array<int,TournamentTeam>
+     */
+    private function getActiveTournamentTeams(Tournament $tournament, Request $request): array
+    {
+        $body = $request->getParsedBody();
+        $hasActiveTeamSelection = is_array($body)
+            ? array_key_exists('teams_selection', $body)
+            : is_object($body) && property_exists($body, 'teams_selection');
+        if (!$hasActiveTeamSelection) {
+            return $tournament->teams;
+        }
+
+        $activeTeamIds = $request->getPost('teams_active', []);
+        if (!is_array($activeTeamIds)) {
+            $activeTeamIds = [$activeTeamIds];
+        }
+
+        $activeTeamIds = array_map('intval', $activeTeamIds);
+        $teams = [];
+        foreach ($tournament->teams as $team) {
+            if (!in_array($team->id, $activeTeamIds, true)) {
+                continue;
+            }
+            $teams[$team->id] = $team;
+        }
+
+        return $teams;
+    }
+
+    private function bracketActionResponse(Tournament $tournament, Request $request): ResponseInterface
+    {
+        if ($request->isAjax()) {
+            if (!empty($request->passErrors)) {
+                return $this->respond(
+                    [
+                        'status' => 'error',
+                        'error' => implode('<br>', $request->passErrors),
+                        'errors' => $request->passErrors,
+                        'notices' => $request->passNotices,
+                    ],
+                    400
+                );
+            }
+
+            return $this->respond(
+                [
+                    'status' => 'ok',
+                    'errors' => [],
+                    'notices' => $request->passNotices,
+                ]
+            );
+        }
+
+        return $this->app->redirect(['tournament', (string)$tournament->id, 'rozlos'], $request);
     }
 
     public function rozlosClear(Tournament $tournament, Request $request): ResponseInterface
     {
         $this->tournamentProvider->reset($tournament);
-        $request->passNotices[] = ['type'    => 'success',
-                                   'content' => lang('Rozlosování bylo smazáno', domain: 'tournament'),
+        $request->passNotices[] = ['type' => 'success',
+            'content' => lang('Rozlosování bylo smazáno', domain: 'tournament'),
         ];
-        return $this->app->redirect(['tournament', $tournament->id, 'rozlos'], $request);
+        return $this->bracketActionResponse($tournament, $request);
+    }
+
+    public function addTournamentGame(Tournament $tournament, Request $request): ResponseInterface
+    {
+        try {
+            $group = $this->getTournamentGroupFromRequest($tournament, $request);
+
+            $game = new Game();
+            $game->tournament = $tournament;
+            $game->group = $group;
+            $game->start = $this->getTournamentGameStartFromRequest($request);
+            if (!$game->save()) {
+                throw new RuntimeException(lang('Hru se nepodařilo uložit.', domain: 'tournament'));
+            }
+
+            $this->replaceTournamentGameTeams($tournament, $game, $group, $request, false);
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang('Hra byla přidána.', domain: 'tournament'),
+            ];
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            $request->addPassError($e->getMessage());
+        }
+
+        return $this->app->redirect(['tournament', (string)$tournament->id, 'rozlos'], $request);
+    }
+
+    private function getTournamentGroupFromRequest(Tournament $tournament, Request $request): Group
+    {
+        $groupId = $request->getPost('group');
+        if (!is_numeric($groupId)) {
+            throw new RuntimeException(lang('Vyberte skupinu.', domain: 'tournament'));
+        }
+
+        $group = Group::get((int)$groupId);
+        if ($group->tournament->id !== $tournament->id) {
+            throw new RuntimeException(lang('Skupina nepatří do tohoto turnaje.', domain: 'tournament'));
+        }
+
+        return $group;
+    }
+
+    private function getTournamentGameStartFromRequest(Request $request): DateTimeImmutable
+    {
+        $start = $request->getPost('start', '');
+        if (!is_string($start)) {
+            throw new RuntimeException(lang('Začátek hry musí být platné datum a čas.', domain: 'tournament'));
+        }
+        if ($start === '' || strtotime(str_replace('T', ' ', $start)) === false) {
+            throw new RuntimeException(lang('Začátek hry musí být platné datum a čas.', domain: 'tournament'));
+        }
+
+        return new DateTimeImmutable(str_replace('T', ' ', $start));
+    }
+
+    private function replaceTournamentGameTeams(
+        Tournament $tournament,
+        Game       $game,
+        Group      $group,
+        Request    $request,
+        bool       $keepExistingKeys
+    ): void
+    {
+        $slots = $request->getPost('teams', []);
+        if (!is_array($slots)) {
+            $slots = [];
+        }
+        if (!isset($game->id, $group->id)) {
+            throw new RuntimeException(lang('Hru se nepodařilo uložit.', domain: 'tournament'));
+        }
+        /** @var array<int|string,array{key?:int|string,team?:int|string|null}|int|string|null> $slots */
+
+        $existingKeys = [];
+        foreach ($game->teams as $slot) {
+            $existingKeys[] = $slot->key;
+        }
+
+        $selectedTeamIds = [];
+        $rows = [];
+        $nextKey = $this->getNextTournamentGameTeamKey($group);
+        for ($i = 0; $i < $tournament->teamsInGame; $i++) {
+            $slot = $slots[$i] ?? [];
+            if (!is_array($slot)) {
+                $slot = ['team' => $slot];
+            }
+
+            $teamId = $slot['team'] ?? null;
+            $team = null;
+            if (is_numeric($teamId)) {
+                $team = TournamentTeam::get((int)$teamId);
+                if ($team->tournament->id !== $tournament->id) {
+                    throw new RuntimeException(lang('Tým nepatří do tohoto turnaje.', domain: 'tournament'));
+                }
+                if (in_array($team->id, $selectedTeamIds, true)) {
+                    throw new RuntimeException(lang('Stejný tým nemůže být ve hře vícekrát.', domain: 'tournament'));
+                }
+                $selectedTeamIds[] = $team->id;
+            }
+
+            if ($keepExistingKeys && isset($slot['key']) && is_numeric($slot['key'])) {
+                $key = (int)$slot['key'];
+            } elseif ($keepExistingKeys && isset($existingKeys[$i])) {
+                $key = $existingKeys[$i];
+            } elseif ($team !== null && isset($team->groupKeys[$group->id])) {
+                $key = $team->groupKeys[$group->id];
+            } else {
+                $key = $nextKey++;
+            }
+
+            $rows[] = [
+                'id_game' => $game->id,
+                'key' => $key,
+                'id_team' => $team?->id,
+            ];
+        }
+
+        DB::getConnection()->begin();
+        try {
+            DB::delete(GameTeam::TABLE, ['id_game = %i', $game->id]);
+            foreach ($rows as $row) {
+                DB::insert(GameTeam::TABLE, $row);
+            }
+            DB::getConnection()->commit();
+        } catch (Throwable $e) {
+            DB::getConnection()->rollback();
+            throw $e;
+        }
+    }
+
+    private function getNextTournamentGameTeamKey(Group $group): int
+    {
+        $max = DB::select(GameTeam::TABLE, 'MAX([key])')
+            ->where(
+                '[id_game] IN %sql',
+                DB::select(Game::TABLE, 'id_game')
+                    ->where('[id_group] = %i', $group->id)
+                    ->fluent
+            )
+            ->fetchSingle(false);
+
+        return is_numeric($max) ? ((int)$max) + 1 : 0;
+    }
+
+    public function updateTournamentGame(Tournament $tournament, Game $game, Request $request): ResponseInterface
+    {
+        if ($game->tournament->id !== $tournament->id) {
+            $request->addPassError(lang('Hra nepatří do tohoto turnaje.', domain: 'tournament'));
+            return $this->bracketActionResponse($tournament, $request);
+        }
+
+        try {
+            $group = $this->getTournamentGroupFromRequest($tournament, $request);
+            $keepExistingKeys = $game->group?->id === $group->id;
+            $game->group = $group;
+            $game->start = $this->getTournamentGameStartFromRequest($request);
+            if (!$game->save()) {
+                throw new RuntimeException(lang('Hru se nepodařilo uložit.', domain: 'tournament'));
+            }
+
+            if ($game->hasScores()) {
+                $request->passNotices[] = [
+                    'type' => 'warning',
+                    'content' => lang(
+                        'Hra má uložené výsledky, proto byly upraveny pouze čas a skupina.',
+                        domain: 'tournament'
+                    ),
+                ];
+            } else {
+                $this->replaceTournamentGameTeams($tournament, $game, $group, $request, $keepExistingKeys);
+                $request->passNotices[] = [
+                    'type' => 'success',
+                    'content' => lang('Hra byla uložena.', domain: 'tournament'),
+                ];
+            }
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            $request->addPassError($e->getMessage());
+        }
+
+        return $this->bracketActionResponse($tournament, $request);
+    }
+
+    public function deleteTournamentGame(Tournament $tournament, Game $game, Request $request): ResponseInterface
+    {
+        if ($game->tournament->id !== $tournament->id) {
+            $request->addPassError(lang('Hra nepatří do tohoto turnaje.', domain: 'tournament'));
+            return $this->bracketActionResponse($tournament, $request);
+        }
+        if ($game->hasScores()) {
+            $request->addPassError(lang('Hru s uloženými výsledky nelze smazat.', domain: 'tournament'));
+            return $this->bracketActionResponse($tournament, $request);
+        }
+
+        if ($game->delete()) {
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang('Hra byla smazána.', domain: 'tournament'),
+            ];
+        } else {
+            $request->addPassError(lang('Hru se nepodařilo smazat.', domain: 'tournament'));
+        }
+
+        return $this->bracketActionResponse($tournament, $request);
+    }
+
+    public function moveTournamentGame(
+        Tournament $tournament,
+        Game       $game,
+        Request    $request,
+        string     $direction
+    ): ResponseInterface
+    {
+        if ($game->tournament->id !== $tournament->id) {
+            $request->addPassError(lang('Hra nepatří do tohoto turnaje.', domain: 'tournament'));
+            return $this->bracketActionResponse($tournament, $request);
+        }
+
+        $games = $tournament->getGames();
+        usort(
+            $games,
+            static fn(Game $a, Game $b) => $a->start <=> $b->start ?: $a->id <=> $b->id
+        );
+
+        $index = array_find_key($games, static fn(Game $item) => $item->id === $game->id);
+        $targetIndex = match ($direction) {
+            'up' => is_int($index) ? $index - 1 : null,
+            'down' => is_int($index) ? $index + 1 : null,
+            default => null,
+        };
+
+        if ($targetIndex === null || !isset($games[$targetIndex])) {
+            $request->addPassError(lang('Hru nelze přesunout požadovaným směrem.', domain: 'tournament'));
+            return $this->bracketActionResponse($tournament, $request);
+        }
+
+        $targetGame = $games[$targetIndex];
+        $start = $game->start;
+        $game->start = $targetGame->start;
+        $targetGame->start = $start;
+
+        if ($game->save() && $targetGame->save()) {
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang('Hra byla přesunuta.', domain: 'tournament'),
+            ];
+        } else {
+            $request->addPassError(lang('Hru se nepodařilo přesunout.', domain: 'tournament'));
+        }
+
+        return $this->bracketActionResponse($tournament, $request);
     }
 
     public function sync(Request $request): ResponseInterface
@@ -306,7 +884,7 @@ class TournamentController extends Controller
             $this->params->system = System::getDefault();
         } elseif (is_numeric($systemId)) {
             try {
-                $this->params->system = System::get((int) $systemId);
+                $this->params->system = System::get((int)$systemId);
             } catch (ModelNotFoundException) {
                 $this->params->system = System::getDefault();
             }
@@ -331,10 +909,14 @@ class TournamentController extends Controller
         }
 
         $this->params->game = $game;
-        $this->params->upcomingGames = Game::query()->where(
-            '[id_tournament] = %i AND [code] IS NULL',
-            $tournament->id
-        )->limit(20)->get();
+        $this->params->upcomingGames = Game::query()
+            ->where(
+                '[id_tournament] = %i AND [code] IS NULL',
+                $tournament->id
+            )
+            ->orderBy('start')
+            ->limit(20)
+            ->get();
         $this->params->vests = array_values(Vest::getForSystem('evo5'));
         $this->params->musicModes = MusicMode::getAll();
         $this->params->playlists = Playlist::getAll();
@@ -387,17 +969,17 @@ class TournamentController extends Controller
     {
         /** @var GameData $data */
         $data = [
-          'game-mode' => 1,
-          'mode'      => Info::get('tournament_game_mode', '0-TEAM_Turnaj'),
-          'music'     => $request->getPost('music'),
-          'meta'      => [
-            'tournament'      => $tournament->id,
-            'tournament_game' => $game->id,
-          ],
-          'player'    => [],
-          'team'      => [],
-          'use-playlist' => $request->getPost('use-playlist'),
-          'playlist'  => $request->getPost('playlist'),
+            'game-mode' => 1,
+            'mode' => Info::get('tournament_game_mode', '0-TEAM_Turnaj'),
+            'music' => $request->getPost('music'),
+            'meta' => [
+                'tournament' => $tournament->id,
+                'tournament_game' => $game->id,
+            ],
+            'player' => [],
+            'team' => [],
+            'use-playlist' => $request->getPost('use-playlist'),
+            'playlist' => $request->getPost('playlist'),
         ];
 
         /** @var Player[] $playersAll */
@@ -423,8 +1005,8 @@ class TournamentController extends Controller
             $tournamentPlayer = $playersAll[$id];
             $data['meta']['p' . $player['vest'] . 'tournament'] = $tournamentPlayer->id;
             $data['player'][$player['vest']] = [
-              'name' => $player['name'],
-              'team' => $player['team'],
+                'name' => $player['name'],
+                'team' => $player['team'],
             ];
             if (isset($tournamentPlayer->user)) {
                 $data['player'][$player['vest']]['code'] = $tournamentPlayer->user->getCode();
@@ -436,11 +1018,11 @@ class TournamentController extends Controller
         return $this->respond(
             new SuccessResponse(
                 values: [
-                      'mode'      => $meta['mode'],
-                      'music'     => $meta['music'],
-                      'group'     => $meta['group'] ?? null,
-                      'groupName' => $meta['groupName'] ?? null,
-                    ],
+                    'mode' => $meta['mode'],
+                    'music' => $meta['music'],
+                    'group' => $meta['group'] ?? null,
+                    'groupName' => $meta['groupName'] ?? null,
+                ],
             )
         );
     }
@@ -507,6 +1089,79 @@ class TournamentController extends Controller
         return $this->respond(['progressed' => $this->tournamentProvider->progress($tournament)]);
     }
 
+    public function undoProgression(
+        Tournament $tournament,
+        Request    $request,
+        string     $type,
+        int        $progressionId
+    ): ResponseInterface
+    {
+        $this->logger->debug(
+            'Undo progression request received',
+            [
+                'tournament' => $tournament->id,
+                'type' => $type,
+                'progressionId' => $progressionId,
+            ]
+        );
+        try {
+            $changed = $this->tournamentProvider->undoProgression($tournament, $type, $progressionId);
+            $this->logger->debug(
+                'Undo progression request finished',
+                [
+                    'tournament' => $tournament->id,
+                    'type' => $type,
+                    'progressionId' => $progressionId,
+                    'changed' => $changed,
+                ]
+            );
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang('Postup byl vrácen. Upraveno slotů: %d', domain: 'tournament', format: [$changed]),
+            ];
+        } catch (ModelNotFoundException|RuntimeException $e) {
+            $this->logger->exception($e);
+            $request->addPassError($e->getMessage());
+        }
+
+        return $this->bracketActionResponse($tournament, $request);
+    }
+
+    public function setProgressionTeam(
+        Tournament $tournament,
+        Request    $request,
+        string     $type,
+        int        $progressionId
+    ): ResponseInterface
+    {
+        $key = $request->getPost('key');
+        $teamId = $request->getPost('team');
+
+        if (!is_numeric($key) || !is_numeric($teamId)) {
+            $request->addPassError(lang('Vyberte slot i tým', domain: 'tournament'));
+            return $this->bracketActionResponse($tournament, $request);
+        }
+
+        try {
+            $team = TournamentTeam::get((int)$teamId);
+            $changed = $this->tournamentProvider->setProgressionTeam(
+                $tournament,
+                $type,
+                $progressionId,
+                (int)$key,
+                $team
+            );
+            $request->passNotices[] = [
+                'type' => 'success',
+                'content' => lang('Tým byl ručně zařazen. Upraveno slotů: %d', domain: 'tournament', format: [$changed]),
+            ];
+        } catch (ModelNotFoundException|RuntimeException $e) {
+            $request->addPassError($e->getMessage());
+        }
+
+        return $this->bracketActionResponse($tournament, $request);
+    }
+
     public function create(): ResponseInterface
     {
         $this->params['addJs'] = ['modules/tournament/create.js'];
@@ -520,7 +1175,7 @@ class TournamentController extends Controller
         $errors = [];
 
         // Validate request
-        $values['name'] = (string) $request->getPost('name', '');
+        $values['name'] = (string)$request->getPost('name', '');
         if (empty($values['name'])) {
             $errors['name'] = lang('Název turnaje je povinný');
         } else {
@@ -528,7 +1183,7 @@ class TournamentController extends Controller
                 $errors['name'] = lang('Název turnaje nesmí být delší, než 100 znaků');
             }
         }
-        $values['start'] = (string) $request->getPost('start', date('d.m.Y H:i'));
+        $values['start'] = (string)$request->getPost('start', date('d.m.Y H:i'));
         if (empty($values['start'])) {
             $errors['start'] = lang('Začátek turnaje je povinný');
         } else {
@@ -536,7 +1191,7 @@ class TournamentController extends Controller
                 $errors['start'] = lang('Začátek turnaje musí být datum a čas');
             }
         }
-        $values['format'] = (string) $request->getPost('format', 'TEAM');
+        $values['format'] = (string)$request->getPost('format', 'TEAM');
         if (empty($values['format'])) {
             $errors['format'] = lang('Formát turnaje je povinný');
         } else {
@@ -544,11 +1199,11 @@ class TournamentController extends Controller
                 $errors['format'] = lang('Formát turnaje není validní');
             }
         }
-        $values['team_size'] = (int) $request->getPost('team_size', 5);
+        $values['team_size'] = (int)$request->getPost('team_size', 5);
         if ($values['format'] === GameModeType::TEAM->value && $values['team_size'] < 1) {
             $errors['team_size'] = lang('Velikost týmu je povinná a musí být kladné číslo');
         }
-        $values['teams_in_game'] = (int) $request->getPost('teams_in_game', 2);
+        $values['teams_in_game'] = (int)$request->getPost('teams_in_game', 2);
         $validValues = [2, 3, 4];
         if (
             $values['format'] === GameModeType::TEAM->value && !in_array(
@@ -579,11 +1234,11 @@ class TournamentController extends Controller
         $tournament->teamSize = $values['team_size'];
         $tournament->teamsInGame = $values['teams_in_game'];
 
-        $tournament->points->win = (int) $request->getPost('points_win', 3);
-        $tournament->points->draw = (int) $request->getPost('points_draw', 1);
-        $tournament->points->loss = (int) $request->getPost('points_loss', 0);
-        $tournament->points->second = (int) $request->getPost('points_second', 2);
-        $tournament->points->third = (int) $request->getPost('points_third', 1);
+        $tournament->points->win = (int)$request->getPost('points_win', 3);
+        $tournament->points->draw = (int)$request->getPost('points_draw', 1);
+        $tournament->points->loss = (int)$request->getPost('points_loss', 0);
+        $tournament->points->second = (int)$request->getPost('points_second', 2);
+        $tournament->points->third = (int)$request->getPost('points_third', 1);
 
         try {
             if ($tournament->save()) {
@@ -605,7 +1260,7 @@ class TournamentController extends Controller
         if (isset($teams) && is_array($teams)) {
             foreach ($teams as $key => $teamData) {
                 if (is_numeric($key)) {
-                    $team = TournamentTeam::get((int) $key);
+                    $team = TournamentTeam::get((int)$key);
                 } else {
                     $team = new TournamentTeam();
                     $team->tournament = $tournament;
@@ -619,7 +1274,7 @@ class TournamentController extends Controller
 
                 foreach ($teamData['players'] as $pKey => $playerData) {
                     if (is_numeric($pKey)) {
-                        $player = Player::get((int) $pKey);
+                        $player = Player::get((int)$pKey);
                     } else {
                         $player = new Player();
                         $player->team = $team;
@@ -642,10 +1297,10 @@ class TournamentController extends Controller
             $cache = App::getServiceByType(Cache::class);
             $cache->clean(
                 [
-                Cache::Tags => [
-                    'tournament-' . $tournament->id . '-teams',
-                    'tournament-' . $tournament->id . '-players',
-                ],
+                    Cache::Tags => [
+                        'tournament-' . $tournament->id . '-teams',
+                        'tournament-' . $tournament->id . '-players',
+                    ],
                 ]
             );
             $request->passNotices[] = ['type' => 'success', 'content' => lang('Uloženo')];

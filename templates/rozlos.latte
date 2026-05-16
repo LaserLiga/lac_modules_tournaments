@@ -4,6 +4,10 @@
 {varType LAC\Modules\Tournament\Models\Game[] $games}
 {varType LAC\Modules\Tournament\Models\Team[] $teams}
 {varType LAC\Modules\Tournament\Models\Group[] $groups}
+{varType \DateTimeImmutable $addGameStart}
+{varType string $mermaidBracket}
+{varType string[] $bracketLegend}
+{varType array $progressionControls}
 {varType array $_POST}
 
 {block content}
@@ -14,16 +18,18 @@
     </p>
     <h2>{_'Turnaj', domain: 'tournament'} - {$tournament->name}</h2>
     <h3>{_'Rozlosování', domain: 'tournament'} ({_'Týmů ve hře: %d', domain: 'tournament', format: [$tournament->teamsInGame]})</h3>
-    {if empty($games)}
-        {include clearTournament}
-    {else}
-        {include fullTournament}
-    {/if}
+    <div id="tournament-rozlos-content">
+        {if empty($games)}
+            {include clearTournament}
+        {else}
+            {include fullTournament}
+        {/if}
+    </div>
 {/block}
 
 {define clearTournament}
     <form action="{link 'tournament', (string) $tournament->id, 'rozlos'}" method="post" id="rozlos-form"
-          data-teams="{count($teams)}" data-teams-in-game="{$tournament->teamsInGame}">
+          data-teams="{count($teams)}" data-teams-in-game="{$tournament->teamsInGame}" data-ajax-rozlos>
         <div class="form-group my-2">
             <label for="tournament-type" class="form-label">{_'Typ turnaje', domain: 'tournament'}</label>
             <select name="tournament-type" id="tournament-type" class="form-select">
@@ -67,10 +73,14 @@
         </div>
 
         <div class="barrage-args" style="display: none;">
-            <div class="form-group my-2 d-none">
+            <div class="form-group my-2">
                 <label for="barrage-base-games" class="form-label">{_'Počet her na tým v základní skupině', domain: 'tournament'}</label>
                 <input type="number" name="args[base_game_count]" class="form-control" id="barrage-base-games"
-                       value="{$_POST['args']['base_game_count'] ?? 3}">
+                       min="1" step="1" required value="{$_POST['args']['base_game_count'] ?? 3}">
+                <div class="form-text" id="barrage-base-games-help">
+                    {_'Počet týmů ve skupině krát počet her na tým musí být dělitelný počtem týmů ve hře.', domain: 'tournament'}
+                </div>
+                <div class="invalid-feedback" id="barrage-base-games-feedback"></div>
             </div>
             <div class="form-group my-2">
                 <label for="barrage-rounds" class="form-label">{_'Maximální počet kol baráže', domain: 'tournament'}</label>
@@ -81,10 +91,25 @@
 
         <hr class="my-5">
 
-        <p>
-            {_'Týmy'} ({count($teams)}):
-            <span n:foreach="$teams as $team" class="badge badge-secondary">{$team->name}</span>
-        </p>
+        <div class="my-4">
+            <div class="form-label">
+                {_'Týmy', domain: 'tournament'} (<span id="active-team-count">{count($teams)}</span> / {count($teams)})
+            </div>
+            <input type="hidden" name="teams_selection" value="1">
+            <div class="d-flex flex-wrap gap-2">
+                <input n:foreach="$teams as $team" type="checkbox" class="btn-check tournament-team-toggle"
+                                                   name="teams_active[]" value="{$team->id}"
+                                                   id="tournament-team-active-{$team->id}"
+                                                   autocomplete="off" checked>
+                <label n:foreach="$teams as $team" class="btn btn-outline-secondary"
+                                                   for="tournament-team-active-{$team->id}">
+                    {$team->name}
+                </label>
+            </div>
+            <div class="form-text">
+                {_'Odškrtnuté týmy nebudou zařazeny do rozlosování.', domain: 'tournament'}
+            </div>
+        </div>
         <p>{_'Počet her', domain: 'tournament'}: <span id="tournament-games"></span></p>
         <p>{_'Předpokládaná délka turnaje', domain: 'tournament'}: <span id="tournament-length"></span></p>
         <p>{_'Předpokládaný počet her na tým', domain: 'tournament'}: <span id="tournament-games-per-team"></span></p>
@@ -97,13 +122,278 @@
 {/define}
 
 {define fullTournament}
+    <div id="tournament-bracket-content">
     <div class="alert alert-info">{_'Turnaj už byl rozlosován', domain: 'tournament'}</div>
-    <p>
-        <a href="{link 'tournament', (string) $tournament->id, 'rozlos', 'clear'}" class="btn btn-danger">
+        <form action="{link 'tournament', (string) $tournament->id, 'rozlos', 'clear'}" method="post"
+              class="mb-3" data-ajax-rozlos>
+            <button type="submit" class="btn btn-danger"
+                    data-confirm="{_'Opravdu chcete smazat rozlosování?', domain: 'tournament'}">
             {_'Smazat rozlosování', domain: 'tournament'}
-        </a>
-    </p>
-    <table class="table table-striped">
+            </button>
+        </form>
+
+        <ul class="nav nav-tabs my-4" id="tournament-rozlos-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tournament-bracket-tab" type="button" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tournament-bracket-pane"
+                        aria-controls="tournament-bracket-pane" aria-selected="true">
+                    {_'Pavouk', domain: 'tournament'}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tournament-progressions-tab" type="button" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tournament-progressions-pane"
+                        aria-controls="tournament-progressions-pane" aria-selected="false">
+                    {_'Postupy', domain: 'tournament'}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tournament-edit-games-tab" type="button" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tournament-edit-games-pane"
+                        aria-controls="tournament-edit-games-pane" aria-selected="false">
+                    {_'Úpravy her', domain: 'tournament'}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tournament-schedule-tab" type="button" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tournament-schedule-pane"
+                        aria-controls="tournament-schedule-pane" aria-selected="false">
+                    {_'Rozpis', domain: 'tournament'}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tournament-matchups-tab" type="button" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tournament-matchups-pane"
+                        aria-controls="tournament-matchups-pane" aria-selected="false">
+                    {_'Vzájemné hry', domain: 'tournament'}
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="tournament-rozlos-tabs-content">
+            <div class="tab-pane fade show active" id="tournament-bracket-pane" role="tabpanel"
+                 aria-labelledby="tournament-bracket-tab" tabindex="0">
+                {if !empty($mermaidBracket)}
+                    <div class="border rounded p-3 overflow-auto bg-light">
+                        <pre class="mermaid tournament-mermaid mb-0">{$mermaidBracket|noescape}</pre>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                    <span n:foreach="$bracketLegend as $status => $label" class="badge text-bg-secondary">
+                        {$status}: {$label}
+                    </span>
+                    </div>
+                {else}
+                    <div class="alert alert-light border">{_'Pavouk není dostupný.', domain: 'tournament'}</div>
+                {/if}
+            </div>
+
+            <div class="tab-pane fade" id="tournament-progressions-pane" role="tabpanel"
+                 aria-labelledby="tournament-progressions-tab" tabindex="0">
+                {if empty($progressionControls)}
+                    <div class="alert alert-light border">{_'Turnaj nemá nastavena postupová pravidla.', domain: 'tournament'}</div>
+                {else}
+                    <div class="row g-3">
+                        <div n:foreach="$progressionControls as $progression" class="col-12 col-xl-6">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between gap-3">
+                                    <div>
+                                        <strong>{$progression['from']}</strong>
+                                        <span class="text-muted"> &rarr; </span>
+                                        <strong>{$progression['to']}</strong>
+                                    </div>
+                                    <span n:if="$progression['points'] !== 0" class="badge text-bg-primary">
+                                {_'%d bodů', domain: 'tournament', format: [$progression['points']]}
+                            </span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-light border py-2 mb-3">
+                                        <strong>{_'Pravidlo postupu', domain: 'tournament'}:</strong>
+                                        {$progression['rule']}
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <div n:foreach="$progression['slots'] as $slot"
+                                                class="row g-2 align-items-center">
+                                            <div class="col">
+                                                <div class="small text-muted">{$slot['label']}</div>
+                                                <div>
+                                                    {if $slot['team'] !== null}
+                                                        {$slot['team']->name}
+                                                    {else}
+                                                        <span class="text-muted">{_'Čeká na tým', domain: 'tournament'}</span>
+                                                    {/if}
+                                                    <span n:if="$slot['locked']" class="badge text-bg-secondary ms-2">
+                                                {_'Výsledek uložen', domain: 'tournament'}
+                                            </span>
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <form action="{link ['tournament', (string) $tournament->id, 'progression', $progression['type'], (string) $progression['id'], 'team']}"
+                                                      method="post" class="d-flex gap-2" data-ajax-rozlos>
+                                                    <input type="hidden" name="key" value="{$slot['key']}">
+                                                    <select name="team"
+                                                            class="form-select form-select-sm" n:attr="disabled: $slot['locked']">
+                                                        <option value="">{_'Vybrat tým', domain: 'tournament'}</option>
+                                                        <option n:foreach="$teams as $team"
+                                                                value="{$team->id}"
+                                                                n:attr="selected: $slot['team']?->id === $team->id">
+                                                            {$team->name}
+                                                        </option>
+                                                    </select>
+                                                    <button type="submit"
+                                                            class="btn btn-sm btn-primary" n:attr="disabled: $slot['locked']">
+                                                        {_'Zařadit', domain: 'tournament'}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <form action="{link ['tournament', (string) $tournament->id, 'progression', $progression['type'], (string) $progression['id'], 'undo']}"
+                                          method="post" data-ajax-rozlos>
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-danger" n:attr="disabled: $progression['locked']">
+                                            {_'Vrátit postup', domain: 'tournament'}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+            </div>
+
+            <div class="tab-pane fade" id="tournament-edit-games-pane" role="tabpanel"
+                 aria-labelledby="tournament-edit-games-tab" tabindex="0">
+                <div class="alert alert-light border">
+                    {_'Týmy lze měnit jen u her bez uložených výsledků. U odehraných her lze upravit pouze čas a skupinu.', domain: 'tournament'}
+                </div>
+
+                <form action="{link ['tournament', (string) $tournament->id, 'rozlos', 'game', 'add']}" method="post"
+                      class="border rounded p-3 mb-3" data-ajax-rozlos>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-3">
+                            <label for="new-game-start" class="form-label">{_'Začátek', domain: 'tournament'}</label>
+                            <input type="datetime-local" name="start" id="new-game-start" class="form-control"
+                                   value="{$addGameStart->format('Y-m-d\TH:i')}">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="new-game-group" class="form-label">{_'Skupina', domain: 'tournament'}</label>
+                            <select name="group" id="new-game-group" class="form-select">
+                                <option n:foreach="$groups as $group" value="{$group->id}">{$group->name}</option>
+                            </select>
+                        </div>
+                        {for $slot = 0; $slot < $tournament->teamsInGame; $slot++}
+                            <div class="col-12 col-md">
+                                <label for="new-game-team-{$slot}" class="form-label">
+                                    {_'Tým %d', domain: 'tournament', format: [$slot + 1]}
+                                </label>
+                                <select name="teams[{$slot}][team]" id="new-game-team-{$slot}" class="form-select">
+                                    <option value="">{_'Volný slot', domain: 'tournament'}</option>
+                                    <option n:foreach="$teams as $team" value="{$team->id}">{$team->name}</option>
+                                </select>
+                            </div>
+                        {/for}
+                        <div class="col-12 col-md-auto">
+                            <button type="submit" class="btn btn-success w-100">
+                                {faSolid 'plus'} {_'Přidat hru', domain: 'tournament'}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="d-grid gap-3">
+                    <div n:foreach="$games as $game" class="border rounded p-3">
+                        {var $gameTeams = array_values(iterator_to_array($game->teams))}
+                        <form action="{link ['tournament', (string) $tournament->id, 'rozlos', 'game', (string) $game->id, 'update']}"
+                              method="post" data-ajax-rozlos>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-12 col-md-auto">
+                                    <div class="form-label">{_'Pořadí', domain: 'tournament'}</div>
+                                    <div class="btn-group" role="group">
+                                        <button type="submit" class="btn btn-outline-secondary"
+                                                form="move-game-up-{$game->id}"
+                                                n:attr="disabled: $iterator->first">
+                                            {faSolid 'arrow-up'}
+                                        </button>
+                                        <button type="submit" class="btn btn-outline-secondary"
+                                                form="move-game-down-{$game->id}"
+                                                n:attr="disabled: $iterator->last">
+                                            {faSolid 'arrow-down'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label for="game-start-{$game->id}"
+                                           class="form-label">{_'Začátek', domain: 'tournament'}</label>
+                                    <input type="datetime-local" name="start" id="game-start-{$game->id}"
+                                           class="form-control"
+                                           value="{$game->start->format('Y-m-d\TH:i')}">
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label for="game-group-{$game->id}"
+                                           class="form-label">{_'Skupina', domain: 'tournament'}</label>
+                                    <select name="group" id="game-group-{$game->id}" class="form-select">
+                                        <option n:foreach="$groups as $group"
+                                                value="{$group->id}"
+                                                n:attr="selected: $game->group?->id === $group->id">
+                                            {$group->name}
+                                        </option>
+                                    </select>
+                                </div>
+                                {for $slot = 0; $slot < $tournament->teamsInGame; $slot++}
+                                    {var $gameTeam = $gameTeams[$slot] ?? null}
+                                    <div class="col-12 col-md">
+                                        <label for="game-team-{$game->id}-{$slot}" class="form-label">
+                                            {_'Tým %d', domain: 'tournament', format: [$slot + 1]}
+                                        </label>
+                                        <input type="hidden" name="teams[{$slot}][key]"
+                                               value="{$gameTeam?->key ?? $slot}">
+                                        <select name="teams[{$slot}][team]" id="game-team-{$game->id}-{$slot}"
+                                                class="form-select" n:attr="disabled: $game->hasScores()">
+                                            <option value="">{_'Volný slot', domain: 'tournament'}</option>
+                                            <option n:foreach="$teams as $team"
+                                                    value="{$team->id}"
+                                                    n:attr="selected: $gameTeam?->team?->id === $team->id">
+                                                {$team->name}
+                                            </option>
+                                        </select>
+                                    </div>
+                                {/for}
+                                <div class="col-12 col-md-auto">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        {faSolid 'save'} {_'Uložit', domain: 'tournament'}
+                                    </button>
+                                </div>
+                                <div class="col-12 col-md-auto">
+                                    <button type="submit" class="btn btn-outline-danger w-100"
+                                            form="delete-game-{$game->id}"
+                                            data-confirm="{_'Opravdu chcete smazat tuto hru?', domain: 'tournament'}"
+                                            n:attr="disabled: $game->hasScores()">
+                                        {faSolid 'trash'} {_'Smazat', domain: 'tournament'}
+                                    </button>
+                                </div>
+                            </div>
+                            <div n:if="$game->hasScores()" class="small text-muted mt-2">
+                                {_'Hra má uložené výsledky.', domain: 'tournament'}
+                            </div>
+                        </form>
+                        <form id="move-game-up-{$game->id}"
+                              action="{link ['tournament', (string) $tournament->id, 'rozlos', 'game', (string) $game->id, 'move', 'up']}"
+                              method="post" data-ajax-rozlos></form>
+                        <form id="move-game-down-{$game->id}"
+                              action="{link ['tournament', (string) $tournament->id, 'rozlos', 'game', (string) $game->id, 'move', 'down']}"
+                              method="post" data-ajax-rozlos></form>
+                        <form id="delete-game-{$game->id}"
+                              action="{link ['tournament', (string) $tournament->id, 'rozlos', 'game', (string) $game->id, 'delete']}"
+                              method="post" data-ajax-rozlos></form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tournament-schedule-pane" role="tabpanel"
+                 aria-labelledby="tournament-schedule-tab" tabindex="0">
+                <table class="table table-striped mb-0">
         <thead>
         <tr>
             <th></th>
@@ -136,8 +426,11 @@
         </tr>
         </tbody>
     </table>
+            </div>
 
-    <table class="table table-striped table-bordered">
+            <div class="tab-pane fade" id="tournament-matchups-pane" role="tabpanel"
+                 aria-labelledby="tournament-matchups-tab" tabindex="0">
+                <table class="table table-striped table-bordered mb-0">
         <thead>
         <tr>
             <th></th>
@@ -168,4 +461,7 @@
         </tr>
         </tfoot>
     </table>
+            </div>
+        </div>
+    </div>
 {/define}

@@ -1,0 +1,42 @@
+{layout '../../../../templates/gate/@layout.latte'}
+
+{varType LAC\Modules\Tournament\Models\Tournament $tournament}
+{varType LAC\Modules\Tournament\Models\Game[] $games}
+{varType int|null $nextGameId}
+
+{define containerClasses}
+    tournament tournament-games-only
+{/define}
+
+{define teamLogo, LAC\Modules\Tournament\Models\Team $team}
+    {var string $logoUrl = $team->getImageUrl() ?? '/assets/images/gate/questionmark.jpg'}
+    <img src="{$logoUrl}" alt="{$team->name}" class="team-logo object-fit-cover rounded-circle">
+{/define}
+
+{define content}
+    <header class="tournament-screen-header">
+        <h1>{$tournament->name}</h1>
+        <h2>{_'Rozpis her', domain: 'tournament'}</h2>
+    </header>
+
+    <section class="tournament-panel tournament-games-list">
+        <div class="game-card-grid">
+            <article n:foreach="$games as $gameTournament" n:class="game-card, $gameTournament->hasScores() ? finished, $gameTournament->id === $nextGameId ? 'next-game'">
+                <div class="game-card-header">
+                    <div class="game-group-name">{isset($gameTournament->group) ? $gameTournament->group->name : lang('Bez skupiny', domain: 'tournament')}</div>
+                    <span class="game-time">{$gameTournament->start->format('H:i')}</span>
+                </div>
+                <div class="teams">
+                    <div n:foreach="$gameTournament->teams as $team"
+                            class="team position-{if $team->position === $tournament->teamsInGame}last{else}{$team->position}{/if}">
+                        {ifset $team->team}
+                            {include teamLogo, team: $team->team}
+                        {/ifset}
+                        <span class="team-name">{$team->name}</span>
+                        <span n:if="$gameTournament->hasScores()" class="team-score">{$team->score ?? 0}</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+{/define}

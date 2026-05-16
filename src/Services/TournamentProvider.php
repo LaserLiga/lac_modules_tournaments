@@ -2,6 +2,10 @@
 
 namespace LAC\Modules\Tournament\Services;
 
+use App\GameModels\Factory\GameFactory;
+use App\GameModels\Game\Game as AppGame;
+use App\GameModels\Game\Player as AppGamePlayer;
+use App\GameModels\Game\Team as AppGameTeam;
 use App\Services\LaserLiga\LigaApi;
 use App\Services\LaserLiga\PlayerProvider;
 use Exception;
@@ -14,6 +18,7 @@ use LAC\Modules\Tournament\Models\Game;
 use LAC\Modules\Tournament\Models\GameTeam;
 use LAC\Modules\Tournament\Models\Group;
 use LAC\Modules\Tournament\Models\League;
+use LAC\Modules\Tournament\Models\MultiProgression;
 use LAC\Modules\Tournament\Models\Player;
 use LAC\Modules\Tournament\Models\Progression;
 use LAC\Modules\Tournament\Models\Team;
@@ -23,9 +28,13 @@ use Lsr\Caching\Cache;
 use Lsr\Db\DB;
 use Lsr\Logging\Logger;
 use Lsr\ObjectValidation\Exceptions\ValidationException;
+use Lsr\Orm\Exceptions\ModelNotFoundException;
+use RuntimeException;
 use Symfony\Component\Serializer\Serializer;
+use Throwable;
 use TournamentGenerator\BlankTeam;
 use TournamentGenerator\Group as GeneratorGroup;
+use TournamentGenerator\Interfaces\ProgressionInterface;
 use TournamentGenerator\Team as GeneratorTeam;
 use TournamentGenerator\Tournament as TournamentGenerator;
 
@@ -63,15 +72,30 @@ class TournamentProvider
                 $leagueLocal->description = $league->description;
                 $leagueLocal->image = $league->image;
                 $leagueLocal->save();
-                try {
-                    $this->logger->debug('Saving league - ' . json_encode($leagueLocal, JSON_THROW_ON_ERROR));
-                } catch (JsonException $e) {
-                    $this->logger->exception($e);
-                }
+                $this->logger->debug(
+                    'Saving league',
+                    [
+                        'id' => $leagueLocal->id,
+                        'publicId' => $leagueLocal->idPublic,
+                        'name' => $leagueLocal->name,
+                        'description' => $leagueLocal->description,
+                        'image' => $leagueLocal->image,
+                    ]
+                );
             }
 
             // Sync tournaments
             $response = $this->api->get('/api/tournament');
+            if ($response->getStatusCode() !== 200) {
+                $this->logger->error(
+                    'Failed to fetch tournaments from API',
+                    [
+                        'status' => $response->getStatusCode(),
+                        'response' => $response->getBody()->getContents(),
+                    ]
+                );
+                return false;
+            }
             /** @var ApiTournament[] $tournaments */
             $tournaments = $this->serializer->deserialize($response->getBody(), ApiTournament::class . '[]', 'json');
             foreach ($tournaments as $tournament) {
@@ -85,8 +109,10 @@ class TournamentProvider
                 $tournamentLocal->image = $tournament->image;
                 $tournamentLocal->format = $tournament->format;
                 $tournamentLocal->teamSize = $tournament->teamSize;
+                $tournamentLocal->teamsInGame = $tournament->teamsInGame;
                 $tournamentLocal->subCount = $tournament->subCount;
                 $tournamentLocal->active = $tournament->active;
+                $tournamentLocal->points = $tournament->points;
                 $tournamentLocal->start = $tournament->start;
                 $tournamentLocal->end = $tournament->end;
                 if (isset($tournament->league)) {
@@ -98,6 +124,17 @@ class TournamentProvider
                     '/api/tournament/' . $tournamentLocal->idPublic . '/teams',
                     ['withPlayers' => '1']
                 );
+                if ($response->getStatusCode() !== 200) {
+                    $this->logger->error(
+                        'Failed to fetch tournament team from API',
+                        [
+                            'tournamentId' => $tournamentLocal->idPublic,
+                            'status' => $response->getStatusCode(),
+                            'response' => $response->getBody()->getContents(),
+                        ]
+                    );
+                    continue;
+                }
                 /** @var ApiTeam[] $teams */
                 $teams = $this->serializer->deserialize($response->getBody(), ApiTeam::class . '[]', 'json');
                 foreach ($teams as $team) {
@@ -139,7 +176,8 @@ class TournamentProvider
 
                         if (isset($player->user)) {
                             $this->logger->debug(
-                                'Player #' . $player->id . ' user - ' . $this->serializer->serialize($player->user, 'json')
+                                'Player #' . $player->id . ' user - ' .
+                                $this->serializer->serialize($player->user, 'json')
                             );
                             $playerLocal->user = $this->playerProvider->getPlayerObjectFromData($player->user);
                         }
@@ -299,6 +337,429 @@ class TournamentProvider
     }
 
     /**
+     * @return AppGame[]
+     */
+    public function getUnpairedResultGames(Tournament $tournament, int $limit = 30): array
+    {
+        $pairedCodes = array_filter(array_map(static fn(Game $game) => $game->code, $tournament->getGames()));
+        $games = [];
+
+        try {
+            $rows = GameFactory::queryGames(true, $tournament->start)
+                ->orderBy('end')
+                ->desc()
+                ->limit($limit * 3)
+                ->fetchAll(cache: false);
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            return [];
+        }
+
+        foreach ($rows as $row) {
+            if (in_array($row->code, $pairedCodes, true)) {
+                continue;
+            }
+            try {
+                $game = GameFactory::getById((int)$row->id_game, ['system' => (string)$row->system]);
+            } catch (Throwable $e) {
+                $this->logger->exception($e);
+                continue;
+            }
+            if (!isset($game) || isset($game->tournamentGame)) {
+                continue;
+            }
+            $games[] = $game;
+            if (count($games) >= $limit) {
+                break;
+            }
+        }
+
+        return $games;
+    }
+
+    public function getResultGameByCode(string $code): ?AppGame
+    {
+        try {
+            return GameFactory::getByCode($code);
+        } catch (Throwable $e) {
+            $this->logger->exception($e);
+            return null;
+        }
+    }
+
+    /**
+     * @param array<int|string,int|string> $teamMap Source game team id => tournament game team id
+     * @param array<int|string,int|string> $scores Source game team id => repaired score
+     * @param array<int|string,int|string> $positions Source game team id => repaired position
+     * @param array<int|string,int|string> $playerMap Source game player id => tournament player id
+     *
+     * @return array{teams:int,players:int,game:int}
+     */
+    public function pairImportedGame(
+        Tournament $tournament,
+        string     $code,
+        int        $targetGameId,
+        array      $teamMap,
+        array      $scores,
+        array      $positions,
+        array      $playerMap,
+        bool       $overwrite = false
+    ): array
+    {
+        $sourceGame = $this->getResultGameByCode($code);
+        if (!isset($sourceGame)) {
+            throw new RuntimeException(lang('Importovaná hra nebyla nalezena', domain: 'tournament'));
+        }
+
+        $targetGame = Game::get($targetGameId);
+        if ($targetGame->tournament->id !== $tournament->id) {
+            throw new RuntimeException(lang('Hra nepatří do tohoto turnaje', domain: 'tournament'));
+        }
+        if ($targetGame->hasScores() && !$overwrite) {
+            throw new RuntimeException(lang('Cílová turnajová hra už má výsledky', domain: 'tournament'));
+        }
+
+        $targetSlots = [];
+        foreach ($targetGame->teams as $slot) {
+            $targetSlots[$slot->id] = $slot;
+        }
+
+        $updatedTeams = 0;
+        /** @var AppGameTeam $sourceTeam */
+        foreach ($sourceGame->teams as $sourceTeam) {
+            $sourceTeamId = $sourceTeam->id ?? null;
+            if (!isset($sourceTeamId, $teamMap[$sourceTeamId]) || !is_numeric($teamMap[$sourceTeamId])) {
+                continue;
+            }
+            $slotId = (int)$teamMap[$sourceTeamId];
+            if (!isset($targetSlots[$slotId])) {
+                throw new RuntimeException(lang('Neplatné přiřazení týmu', domain: 'tournament'));
+            }
+            $slot = $targetSlots[$slotId];
+            if (!isset($slot->team)) {
+                throw new RuntimeException(lang('Cílový slot nemá turnajový tým', domain: 'tournament'));
+            }
+
+            $sourceTeam->tournamentTeam = $slot->team;
+            $sourceTeam->score = is_numeric($scores[$sourceTeamId] ?? null)
+                ? (int)$scores[$sourceTeamId]
+                : $sourceTeam->score;
+            $sourceTeam->position = is_numeric($positions[$sourceTeamId] ?? null)
+                ? (int)$positions[$sourceTeamId]
+                : $sourceTeam->position;
+            $sourceTeam->save();
+
+            $slot->score = $sourceTeam->score;
+            $slot->position = $sourceTeam->position;
+            $slot->points = $this->getTournamentPointsForPosition($slot->position, $tournament);
+            $slot->save();
+            $updatedTeams++;
+        }
+
+        $updatedPlayers = 0;
+        /** @var AppGamePlayer $sourcePlayer */
+        foreach ($sourceGame->players as $sourcePlayer) {
+            $sourcePlayerId = $sourcePlayer->id ?? null;
+            if (!isset($sourcePlayerId, $playerMap[$sourcePlayerId]) || !is_numeric($playerMap[$sourcePlayerId])) {
+                continue;
+            }
+            try {
+                $sourcePlayer->tournamentPlayer = Player::get((int)$playerMap[$sourcePlayerId]);
+            } catch (ModelNotFoundException) {
+                continue;
+            }
+            if ($sourcePlayer->tournamentPlayer->tournament->id !== $tournament->id) {
+                continue;
+            }
+            $sourcePlayer->save();
+            $updatedPlayers++;
+        }
+
+        $sourceGame->tournamentGame = $targetGame;
+        $targetGame->code = $sourceGame->code;
+        $targetGame->save();
+        $sourceGame->save();
+        $this->recalcTeamPoints($tournament);
+        $this->cleanTournamentCache($tournament);
+
+        $this->logger->info(
+            'Tournament imported game paired manually',
+            [
+                'tournament' => $tournament->id,
+                'sourceGame' => $sourceGame->code,
+                'targetGame' => $targetGame->id,
+                'teams' => $updatedTeams,
+                'players' => $updatedPlayers,
+            ]
+        );
+
+        return ['teams' => $updatedTeams, 'players' => $updatedPlayers, 'game' => $targetGame->id];
+    }
+
+    /**
+     * @return array{points:bool,progressed:int,synced:?bool}
+     */
+    public function recoverTournament(Tournament $tournament, bool $syncGames = false): array
+    {
+        $this->recalcTeamPoints($tournament);
+        $progressed = $this->progress($tournament);
+        $this->cleanTournamentCache($tournament);
+
+        $synced = null;
+        if ($syncGames) {
+            $synced = $this->syncGames($tournament);
+        }
+
+        return [
+            'points' => true,
+            'progressed' => $progressed,
+            'synced' => $synced,
+        ];
+    }
+
+    public function buildMermaidBracket(Tournament $tournament): string
+    {
+        if (count($tournament->groups) === 0) {
+            return '';
+        }
+
+        $lines = [
+            'flowchart LR',
+        ];
+        $groups = [];
+        foreach ($tournament->groups as $group) {
+            $groups[$group->id] = $group;
+            $lines[] = sprintf(
+                '  G%d["%s"]',
+                $group->id,
+                $this->escapeMermaidLabel($this->getMermaidGroupLabel($group))
+            );
+        }
+        foreach ($groups as $group) {
+            $lines[] = sprintf('  class G%d %s', $group->id, $this->getMermaidGroupStatus($group));
+        }
+
+        foreach ($tournament->getProgressions() as $progression) {
+            if (!isset($progression->from, $groups[$progression->from->id], $groups[$progression->to->id])) {
+                continue;
+            }
+
+            $lines[] = sprintf(
+                '  G%d -->|"%s"| G%d',
+                $progression->from->id,
+                $this->escapeMermaidLabel($this->getMermaidProgressionLabel($progression)),
+                $progression->to->id
+            );
+        }
+
+        foreach ($tournament->getMultiProgressions() as $progression) {
+            if (!isset($groups[$progression->to->id])) {
+                continue;
+            }
+            foreach ($progression->from as $from) {
+                if (!isset($groups[$from->id])) {
+                    continue;
+                }
+
+                $lines[] = sprintf(
+                    '  G%d -->|"%s"| G%d',
+                    $from->id,
+                    $this->escapeMermaidLabel($this->getMermaidMultiProgressionLabel($progression)),
+                    $progression->to->id
+                );
+            }
+        }
+
+        $lines[] = '  classDef planned fill:#f8f9fa,stroke:#adb5bd,color:#212529';
+        $lines[] = '  classDef ready fill:#fff3cd,stroke:#ffca2c,color:#212529';
+        $lines[] = '  classDef progressed fill:#d1e7dd,stroke:#198754,color:#0f5132';
+        $lines[] = '  classDef partial fill:#cff4fc,stroke:#0dcaf0,color:#055160';
+        $lines[] = '  classDef blocked fill:#f8d7da,stroke:#dc3545,color:#842029';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    public function getBracketStatusLegend(): array
+    {
+        return [
+            'planned' => lang('Naplánováno', domain: 'tournament'),
+            'ready' => lang('Připraveno k postupu', domain: 'tournament'),
+            'progressed' => lang('Postoupeno / odehráno', domain: 'tournament'),
+            'partial' => lang('Částečně obsazeno', domain: 'tournament'),
+            'blocked' => lang('Blokováno výsledky', domain: 'tournament'),
+        ];
+    }
+
+    private function getMermaidGroupStatus(Group $group): string
+    {
+        $incoming = array_merge($group->progressionsTo, $group->multiProgressionsTo);
+        $incomingFilled = 0;
+        $incomingTotal = 0;
+        $blocked = false;
+        foreach ($incoming as $progression) {
+            foreach ($this->getProgressionFillState($progression) as $state) {
+                $incomingTotal++;
+                if ($state['filled']) {
+                    $incomingFilled++;
+                }
+                if (!$state['filled'] && $state['blocked']) {
+                    $blocked = true;
+                }
+            }
+        }
+
+        if ($blocked) {
+            return 'blocked';
+        }
+        if ($incomingTotal > 0 && $incomingFilled > 0 && $incomingFilled < $incomingTotal) {
+            return 'partial';
+        }
+
+        $playedGames = 0;
+        $plannedGames = 0;
+        foreach ($group->games as $game) {
+            if (count($game->teams->filter(static fn(GameTeam $team) => isset($team->team))) < 2) {
+                continue;
+            }
+            $plannedGames++;
+            if ($game->hasScores()) {
+                $playedGames++;
+            }
+        }
+
+        $outgoing = array_merge($group->progressionsFrom, $group->multiProgressionsFrom);
+        if (count($outgoing) > 0) {
+            $outgoingStates = [];
+            foreach ($outgoing as $progression) {
+                $outgoingStates = [...$outgoingStates, ...$this->getProgressionFillState($progression)];
+            }
+            if (!empty($outgoingStates) && array_all($outgoingStates, static fn(array $state) => $state['filled'])) {
+                return 'progressed';
+            }
+            if ($plannedGames > 0 && $playedGames === $plannedGames) {
+                return 'ready';
+            }
+        }
+
+        if ($plannedGames > 0 && $playedGames === $plannedGames) {
+            return 'progressed';
+        }
+
+        return 'planned';
+    }
+
+    /**
+     * @return array<int,array{key:int,filled:bool,blocked:bool}>
+     */
+    private function getProgressionFillState(Progression|MultiProgression $progression): array
+    {
+        $states = [];
+        foreach ($progression->getKeys() as $key) {
+            $states[$key] = ['key' => $key, 'filled' => false, 'blocked' => false];
+        }
+        foreach ($progression->to->games as $game) {
+            foreach ($game->teams as $team) {
+                if (!isset($states[$team->key])) {
+                    continue;
+                }
+                if (isset($team->team)) {
+                    $states[$team->key]['filled'] = true;
+                }
+                if ($game->hasScores()) {
+                    $states[$team->key]['blocked'] = true;
+                }
+            }
+        }
+        return array_values($states);
+    }
+
+    private function getMermaidGroupLabel(Group $group): string
+    {
+        $gameCount = count($group->games);
+        if ($gameCount === 0) {
+            return $group->name;
+        }
+
+        return sprintf(
+            '%s (%d %s)',
+            $group->name,
+            $gameCount,
+            $gameCount === 1 ? lang('hra', domain: 'tournament') : lang('her', domain: 'tournament')
+        );
+    }
+
+    private function getMermaidProgressionLabel(Progression $progression): string
+    {
+        return trim(
+            implode(
+                ', ',
+                array_filter(
+                    [
+                        $this->getMermaidProgressionRangeLabel($progression->start, $progression->length),
+                        $this->getMermaidProgressionPointsLabel($progression->points),
+                    ],
+                    static fn(string $label) => $label !== ''
+                )
+            )
+        );
+    }
+
+    private function getMermaidMultiProgressionLabel(MultiProgression $progression): string
+    {
+        return trim(
+            implode(
+                ', ',
+                array_filter(
+                    [
+                        $this->getMermaidProgressionRangeLabel($progression->start, $progression->length),
+                        isset($progression->totalLength) ? sprintf(
+                            'top %d/%d',
+                            $progression->totalLength,
+                            count($progression->from)
+                        ) : '',
+                        $this->getMermaidProgressionPointsLabel($progression->points),
+                    ],
+                    static fn(string $label) => $label !== ''
+                )
+            )
+        );
+    }
+
+    private function getMermaidProgressionRangeLabel(?int $start, ?int $length): string
+    {
+        $start ??= 0;
+        if ($length === null) {
+            return sprintf('rank %d+', $start + 1);
+        }
+        if ($length === 1) {
+            return sprintf('rank %d', $start + 1);
+        }
+
+        return sprintf('rank %d-%d', $start + 1, $start + $length);
+    }
+
+    private function getMermaidProgressionPointsLabel(int $points): string
+    {
+        if ($points === 0) {
+            return '';
+        }
+
+        return sprintf('%+d pts', $points);
+    }
+
+    private function escapeMermaidLabel(string $label): string
+    {
+        return str_replace(
+            ["\r", "\n", '"', '|', '[', ']', '<', '>', '&'],
+            [' ', ' ', "'", '/', '(', ')', '(', ')', '+'],
+            $label
+        );
+    }
+
+    /**
      * @param TournamentPresetType         $type
      * @param Tournament                   $tournament
      * @param int                          $iterations
@@ -307,7 +768,13 @@ class TournamentProvider
      * @return TournamentGenerator
      * @throws ValidationException
      */
-    public function createTournamentFromPreset(TournamentPresetType $type, Tournament $tournament, int $iterations = 1, array $args = []): TournamentGenerator {
+    public function createTournamentFromPreset(
+        TournamentPresetType $type,
+        Tournament           $tournament,
+        int                  $iterations = 1,
+        array                $args = []
+    ): TournamentGenerator
+    {
         $tournamentRozlos = new TournamentGenerator();
         foreach ($tournament->teams as $team) {
             $tournamentRozlos->team($team->name, $team->id);
@@ -369,7 +836,10 @@ class TournamentProvider
                 break;
         }
 
-        if ($type !== TournamentPresetType::BASE_ROUND_AND_BARRAGE && $type !== TournamentPresetType::TWO_BASE_ROUND_AND_BARRAGE) {
+        if (
+            $type !== TournamentPresetType::BASE_ROUND_AND_BARRAGE &&
+            $type !== TournamentPresetType::TWO_BASE_ROUND_AND_BARRAGE
+        ) {
             $tournamentRozlos->setIterationCount($iterations);
             $tournamentRozlos->genGamesSimulate();
         }
@@ -395,109 +865,181 @@ class TournamentProvider
      *
      * @post $tournamentRozlos object will be populated with generated games.
      */
-    private function prepareGamesBarrage(Tournament $tournament, TournamentGenerator $tournamentRozlos, int $baseGameCount = 3, int $maxBarrageRounds = 4): void {
+    private function prepareGamesBarrage(
+        Tournament          $tournament,
+        TournamentGenerator $tournamentRozlos,
+        int                 $baseGameCount = 3,
+        int                 $maxBarrageRounds = 4
+    ): void
+    {
         $teams = $tournamentRozlos->getTeams();
         shuffle($teams);
-
-        // Initialize team counters
-        /** @var GeneratorTeam[] $teamIds */
-        $teamIds = [];
-        /** @var array<int|string,int> $teamGames Team game counter where game count < baseGameCount */
-        $teamGames = [];
-        /** @var array<int|string,array<int|string,int>> $teamGamesWithTeams */
-        $teamGamesWithTeams = [];
-        foreach ($teams as $team) {
-            $teamIds[$team->getId()] = $team;
-            $teamGames[$team->getId()] = 0;
-            $teamGamesWithTeams[$team->getId()] = [];
-            foreach ($teams as $team2) {
-                $teamGamesWithTeams[$team->getId()][$team2->getId()] = 0;
-            }
-        }
 
         $baseRound = $tournamentRozlos->round(lang('Základní skupina', context: 'tournament'));
         $baseGroup = $baseRound->group('A');
         $baseGroup->setInGame($tournament->teamsInGame);
         $baseGroup->addTeam(...$teams);
-
-        // Generate games where each team plays exactly baseGameCount games.
-        // The algorithm should try to generate fair games, where each player plays the same opponent ideally only once.
-        // It should probably include some kind of rollback functionality if it finds an impossible game.
-        $this->generateBarrageBaseGroup(
-            $teamGames,
-            $teamIds,
-            $tournament,
-            $teamGamesWithTeams,
-            $baseGroup,
-            $baseGameCount
-        );
-
-        // Sort the games to minimize one team playing multiple games back to back
+        $this->generateBarrageBaseGroupGames($baseGroup, $baseGroup->getTeams(), $tournament, $baseGameCount);
         $baseGroup->orderGames();
 
-        // Generate the final barrage turns
-        $roundNames = [
-          lang('Finále', domain: 'tournament'),
-          lang('Semifinále', domain: 'tournament'),
-          lang('Čtvrtfinále', domain: 'tournament'),
-          lang('Osmifinále', domain: 'tournament'),
-        ];
-        $otherRoundName = lang('Předkolo', domain: 'tournament');
-        $alphabet = range('A', 'Z');
         $roundCounter = 1;
-        $barrageRounds = min(
-            floor(1 + ((count($teams) - $tournament->teamsInGame) / ($tournament->teamsInGame - 1))),
-            $maxBarrageRounds
+        $teamCount = count($teams);
+        $teamsInGame = $tournament->teamsInGame;
+        $eliminationsPerGame = $teamsInGame - 1;
+        $preliminaryEliminations = ($teamCount - 1) % $eliminationsPerGame;
+        $preliminarySurvivors = $preliminaryEliminations > 0 ? $teamsInGame - $preliminaryEliminations : 0;
+        $barrageRounds = (int)(($teamCount - $preliminaryEliminations - 1) / $eliminationsPerGame);
+        $placementPointStep = $this->getBarragePlacementPointStep(
+            $tournament,
+            $baseGameCount,
+            $barrageRounds,
+            $preliminaryEliminations > 0
         );
-        bdump($barrageRounds);
+        $this->logger->debug(
+            'Barrage progression setup',
+            [
+                'tournament' => $tournament->id,
+                'teamCount' => $teamCount,
+                'teamsInGame' => $teamsInGame,
+                'eliminationsPerGame' => $eliminationsPerGame,
+                'preliminaryEliminations' => $preliminaryEliminations,
+                'preliminarySurvivors' => $preliminarySurvivors,
+                'barrageRounds' => $barrageRounds,
+                'placementPointStep' => $placementPointStep,
+            ]
+        );
 
-        // First round should have max number of teams already progressed.
-        // All next rounds should have max-1 teams progressed.
-        // 1 team progresses from each round to the next.
-        $round = $tournamentRozlos->round($roundNames[$barrageRounds - 1] ?? $otherRoundName);
-        $group = $round->group($alphabet[$roundCounter])->setInGame($tournament->teamsInGame);
-        $progression = $baseGroup->progression(
-            $group,
-            ($barrageRounds - 1) * ($tournament->teamsInGame - 1),
-            $tournament->teamsInGame
-        );
-        $groupTeams = [];
-        for ($t = 0; $t < $tournament->teamsInGame; $t++) {
-            $groupTeams[] = $team = new BlankTeam($alphabet[$roundCounter] . $t, $teams[$t], $baseGroup, $progression);
-            $group->addTeam($team);
-        }
-        $group->game($groupTeams);
-        for ($i = 1; $i < $barrageRounds; $i++) {
-            $newRound = $tournamentRozlos->round($roundNames[$barrageRounds - 1 - $i] ?? $otherRoundName);
-            $newGroup = $newRound->group($alphabet[$roundCounter + $i])->setInGame($tournament->teamsInGame);
-            $progression = $baseGroup->progression(
-                $newGroup,
-                // teams in the first round + for each previous round
-                ($barrageRounds - 1 - $i) * ($tournament->teamsInGame - 1),
-                $tournament->teamsInGame - 1
-            );
-            // Progress team from the previous round
-            $progression2 = $group->progression($newGroup, 0, 1);
-            $newGroupTeams = [];
-            for ($t = 0; $t < ($tournament->teamsInGame - 1); $t++) {
-                $newGroupTeams[] = $team = new BlankTeam(
+        // If the team count cannot be reduced by regular barrage games, add one full preliminary game
+        // where more than one team can progress. Example: 12 teams in 3-team games need bottom 3 -> top 2.
+        $preliminaryGroup = null;
+        $preliminaryProgression = null;
+        if ($preliminaryEliminations > 0) {
+            $preliminaryRound = $tournamentRozlos->round(lang('Předkolo', domain: 'tournament'));
+            $alphabet = range('A', 'Z');
+            $preliminaryGroup = $preliminaryRound->group($alphabet[$roundCounter])->setInGame($teamsInGame);
+            $preliminaryProgression = $baseGroup->progression(
+                $preliminaryGroup,
+                $teamCount - $teamsInGame,
+                $teamsInGame
+            )->setPoints(0);
+
+            $preliminaryTeams = [];
+            for ($t = 0; $t < $teamsInGame; $t++) {
+                $teamIndex = $teamCount - $teamsInGame + $t;
+                $preliminaryTeams[] = $team = new BlankTeam(
                     $alphabet[$roundCounter] . $t,
-                    $teams[$t],
+                    $teams[$teamIndex],
                     $baseGroup,
-                    $progression
+                    $preliminaryProgression
                 );
-                $newGroup->addTeam($team);
+                $preliminaryGroup->addTeam($team);
             }
-            $newGroupTeams[] = $team = new BlankTeam(
-                $alphabet[$roundCounter] . count($newGroupTeams),
-                $teams[count($newGroupTeams)],
-                $group,
-                $progression2
-            );
-            $newGroup->addTeam($team);
-            $newGroup->game($newGroupTeams);
-            $group = $newGroup;
+            $preliminaryGroup->game($preliminaryTeams);
+            $roundCounter++;
         }
+
+        $this->generateBarrageRounds(
+            $tournament,
+            $tournamentRozlos,
+            $barrageRounds,
+            $placementPointStep,
+            $roundCounter,
+            function (GeneratorGroup $group) use (
+                $baseGroup,
+                $barrageRounds,
+                $eliminationsPerGame,
+                $placementPointStep,
+                $preliminaryGroup,
+                $preliminarySurvivors,
+                $teams,
+                $teamCount,
+                $teamsInGame,
+                $tournament
+            ): array {
+                $slots = [];
+                $baseTeamsInFirstRound = $teamsInGame - $preliminarySurvivors;
+                if ($baseTeamsInFirstRound > 0) {
+                    $baseStart = ($barrageRounds - 1) * $eliminationsPerGame;
+                    $progression = $baseGroup->progression(
+                        $group,
+                        $baseStart,
+                        $baseTeamsInFirstRound
+                    )->setPoints($placementPointStep);
+                    for ($t = 0; $t < $baseTeamsInFirstRound; $t++) {
+                        $slots[] = $this->createBarrageSlot($baseGroup, $progression, $teams[$baseStart + $t]);
+                    }
+                }
+                if ($preliminaryGroup !== null) {
+                    for ($t = 0; $t < $preliminarySurvivors; $t++) {
+                        $progression = $preliminaryGroup->progression($group, $t, 1)->setPoints(
+                            $placementPointStep - $this->getTournamentPointsForPosition($t + 1, $tournament)
+                        );
+                        $slots[] = $this->createBarrageSlot(
+                            $preliminaryGroup,
+                            $progression,
+                            $teams[$teamCount - $preliminarySurvivors + $t]
+                        );
+                    }
+                }
+
+                return $slots;
+            },
+            function (
+                int            $roundIndex,
+                int            $stage,
+                GeneratorGroup $newGroup
+            ) use (
+                $baseGroup,
+                $barrageRounds,
+                $teams,
+                $teamsInGame,
+                $placementPointStep
+            ): array {
+                $baseStart = ($barrageRounds - 1 - $roundIndex) * ($teamsInGame - 1);
+                $progression = $baseGroup->progression(
+                    $newGroup,
+                    $baseStart,
+                    $teamsInGame - 1
+                )->setPoints($stage * $placementPointStep);
+                $slots = [];
+                for ($t = 0; $t < ($teamsInGame - 1); $t++) {
+                    $slots[] = $this->createBarrageSlot($baseGroup, $progression, $teams[$baseStart + $t]);
+                }
+
+                return [
+                    'slots' => $slots,
+                    'previousTeam' => $teams[$baseStart + count($slots)],
+                ];
+            }
+        );
+    }
+
+    private function getBarragePlacementPointStep(
+        Tournament $tournament,
+        int        $baseGameCount,
+        int        $barrageRounds,
+        bool       $hasPreliminaryRound
+    ): int
+    {
+        $maxGamePoints = max(
+            $tournament->points->win,
+            $tournament->points->draw,
+            $tournament->points->second,
+            $tournament->points->third,
+            $tournament->points->loss
+        );
+
+        return (($baseGameCount + $barrageRounds + ($hasPreliminaryRound ? 1 : 0) + 1) * $maxGamePoints) + 1;
+    }
+
+    private function getTournamentPointsForPosition(int $position, Tournament $tournament): int
+    {
+        return match ($position) {
+            1 => $tournament->points->win,
+            2 => $tournament->teamsInGame > 2 ? $tournament->points->second : $tournament->points->loss,
+            3 => $tournament->teamsInGame > 3 ? $tournament->points->third : $tournament->points->loss,
+            default => $tournament->points->loss,
+        };
     }
 
     /**
@@ -508,10 +1050,12 @@ class TournamentProvider
      * If it encounters an impossible game, it should include some form of rollback functionality.
      *
      * @param array<int|string,int>                   $teamGames          An array of team games counters.
-     * @param array<int|string,GeneratorTeam>         $teamIds            An array of team objects, indexed by their IDs.
+     * @param array<int|string,GeneratorTeam> $teamIds Team objects indexed by their IDs.
      * @param Tournament                              $tournament         The tournament object.
-     * @param array<int|string,array<int|string,int>> $teamGamesWithTeams An array representing the game matrix between teams.
-     *                                                                    Each element is another array indexed by the team IDs, which holds the number of games played between each pair of teams.
+     * @param array<int|string,array<int|string,int>> $teamGamesWithTeams An array representing the game matrix
+     *                                                                    between teams. Each element is another array
+     *                                                                    indexed by team IDs, which holds the number
+     *                                                                    of games played between each pair of teams.
      * @param GeneratorGroup                          $baseGroup          The base group object.
      * @param int                                     $baseGameCount      The number of games each team should play.
      *
@@ -520,92 +1064,257 @@ class TournamentProvider
      *
      * @post The games will be generated and added to the $baseGroup object.
      */
-    private function generateBarrageBaseGroup(array $teamGames, array $teamIds, Tournament $tournament, array $teamGamesWithTeams, GeneratorGroup $baseGroup, int $baseGameCount): void {
-        // Generate games where each team plays exactly baseGameCount games.
-        // The algorithm should try to generate fair games, where each player plays the same opponent ideally only once.
-        // It should probably include some kind of rollback functionality if it finds an impossible game.
-        $it = 0;
-        $allGames = [];
-        $allTeam1 = [];
-        while (count($teamGames) > 0 && $it < 50) {
-            $notEnoughTeams = false;
-            $it++;
-
-            // Step 1 - choose the team with the most games
-            $maxTeams = [];
-            $maxGames = max($teamGames);
-            foreach ($teamGames as $id => $games) {
-                if ($games === $maxGames) {
-                    $maxTeams[] = $id;
-                }
-            }
-            $team1Id = $maxTeams[array_rand($maxTeams)];
-            $team1 = $teamIds[$team1Id];
-            $allTeam1[] = $team1Id;
-
-            // Step 2 - Choose other teams that the team1 played the least games with
-            /** @var array<string|int> $otherTeamIds */
-            $otherTeamIds = [];
-            for ($i = 1; $i < $tournament->teamsInGame; $i++) {
-                // Filtered teams
-                $otherTeamsSearch = array_filter(
-                    $teamGamesWithTeams[$team1Id],
-                    static fn(int|string $id) => $id !== $team1Id && !in_array(
-                        $id,
-                        $otherTeamIds,
-                        true
-                    ) && isset($teamGames[$id]),
-                    ARRAY_FILTER_USE_KEY
-                );
-                bdump($otherTeamsSearch);
-                if (count($otherTeamsSearch) === 0) {
-                    bdump('ERROR');
-                    $notEnoughTeams = true;
-                    break; // TODO: Handle error
-                }
-                $minTeams = [];
-                $minGames = min($otherTeamsSearch);
-                foreach ($otherTeamsSearch as $id => $games) {
-                    if ($games === $minGames) {
-                        $minTeams[] = $id;
-                    }
-                }
-                $otherTeamIds[] = $minTeams[array_rand($minTeams)];
-            }
-            if ($notEnoughTeams) {
-                continue;
-            }
-            $otherTeams = array_map(static fn(string|int $id) => $teamIds[$id], $otherTeamIds);
-
-            // Step 3 - Create a game and increment all counters
-            $allGames[] = $baseGroup->game([$team1, ...$otherTeams]);
-            $teamGames[$team1Id]++;
-            foreach ($otherTeamIds as $id) {
-                $teamGames[$id]++;
-                // The matrix should be reflexive.
-                $teamGamesWithTeams[$team1Id][$id]++;
-                $teamGamesWithTeams[$id][$team1Id]++;
-                foreach ($otherTeamIds as $id2) {
-                    if ($id === $id2) {
-                        continue;
-                    }
-                    $teamGamesWithTeams[$id][$id2]++;
-                    // Pair id2, id will be incremented on another iteration of the parent foreach.
-                }
-            }
-
-            // Step 4 - Remove teams with exactly baseGameCount games
-            foreach ($teamGames as $id => $games) {
-                if ($games === $baseGameCount) {
-                    unset($teamGames[$id]);
-                }
-            }
-            bdump($teamGames);
+    private function generateBarrageBaseGroup(
+        array          $teamGames,
+        array          $teamIds,
+        Tournament     $tournament,
+        array          $teamGamesWithTeams,
+        GeneratorGroup $baseGroup,
+        int            $baseGameCount
+    ): void
+    {
+        $totalGameSlots = count($teamGames) * $baseGameCount;
+        if ($totalGameSlots % $tournament->teamsInGame !== 0) {
+            throw new Exception('Cannot generate barrage base group with equal game counts.');
         }
-        bdump($teamGamesWithTeams);
+
+        $remainingGames = array_map(static fn() => $baseGameCount, $teamGames);
+        $schedule = $this->buildBarrageBaseSchedule(
+            $remainingGames,
+            $teamGamesWithTeams,
+            $tournament->teamsInGame
+        );
+        if ($schedule === null) {
+            throw new Exception('Cannot generate barrage base group with equal game counts.');
+        }
+        $schedule = $this->orderBarrageBaseSchedule($schedule);
+
+        foreach ($schedule as $gameTeamIds) {
+            $baseGroup->game(array_map(static fn(int|string $id) => $teamIds[$id], $gameTeamIds));
+        }
     }
 
-    private function prepareTwoGroupsGamesBarrage(Tournament $tournament, TournamentGenerator $tournamentRozlos, int $baseGameCount = 3, int $maxBarrageRounds = 4): void {
+    /**
+     * @param array<int|string,int> $remainingGames
+     * @param array<int|string,array<int|string,int>> $teamGamesWithTeams
+     *
+     * @return array<int,array<int,int|string>>|null
+     */
+    private function buildBarrageBaseSchedule(
+        array $remainingGames,
+        array $teamGamesWithTeams,
+        int   $teamsInGame
+    ): ?array
+    {
+        $attempts = 0;
+
+        return $this->buildBarrageBaseScheduleStep(
+            $remainingGames,
+            $teamGamesWithTeams,
+            $teamsInGame,
+            [],
+            $attempts
+        );
+    }
+
+    /**
+     * @param array<int|string,int> $remainingGames
+     * @param array<int|string,array<int|string,int>> $teamGamesWithTeams
+     * @param array<int,array<int,int|string>> $schedule
+     *
+     * @return array<int,array<int,int|string>>|null
+     */
+    private function buildBarrageBaseScheduleStep(
+        array $remainingGames,
+        array $teamGamesWithTeams,
+        int   $teamsInGame,
+        array $schedule,
+        int   &$attempts
+    ): ?array
+    {
+        $attempts++;
+        if ($attempts > 50000) {
+            return null;
+        }
+
+        $remainingGames = array_filter($remainingGames, static fn(int $games) => $games > 0);
+        if (count($remainingGames) === 0) {
+            return $schedule;
+        }
+
+        $remainingSlots = array_sum($remainingGames);
+        if (
+            $remainingSlots % $teamsInGame !== 0 ||
+            count($remainingGames) < $teamsInGame ||
+            max($remainingGames) > ($remainingSlots / $teamsInGame)
+        ) {
+            return null;
+        }
+
+        arsort($remainingGames);
+        $firstTeamId = array_key_first($remainingGames);
+        $partnerIds = array_values(array_diff(array_keys($remainingGames), [$firstTeamId]));
+        $partnerCombinations = $this->getBarrageTeamCombinations($partnerIds, $teamsInGame - 1);
+        usort(
+            $partnerCombinations,
+            static function (array $a, array $b) use ($firstTeamId, $remainingGames, $teamGamesWithTeams): int {
+                return [
+                        self::getBarrageTeamSetPairCount([$firstTeamId, ...$a], $teamGamesWithTeams),
+                        -array_sum(array_intersect_key($remainingGames, array_flip($a))),
+                    ] <=> [
+                        self::getBarrageTeamSetPairCount([$firstTeamId, ...$b], $teamGamesWithTeams),
+                        -array_sum(array_intersect_key($remainingGames, array_flip($b))),
+                    ];
+            }
+        );
+
+        foreach ($partnerCombinations as $partnerCombination) {
+            $teamIds = [$firstTeamId, ...$partnerCombination];
+            $nextRemainingGames = $remainingGames;
+            foreach ($teamIds as $teamId) {
+                $nextRemainingGames[$teamId]--;
+            }
+            $nextTeamGamesWithTeams = $teamGamesWithTeams;
+            foreach ($teamIds as $teamId) {
+                foreach ($teamIds as $opponentId) {
+                    if ($teamId === $opponentId) {
+                        continue;
+                    }
+                    $nextTeamGamesWithTeams[$teamId][$opponentId]++;
+                }
+            }
+
+            $result = $this->buildBarrageBaseScheduleStep(
+                $nextRemainingGames,
+                $nextTeamGamesWithTeams,
+                $teamsInGame,
+                [...$schedule, $teamIds],
+                $attempts
+            );
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<int|string> $teamIds
+     *
+     * @return list<list<int|string>>
+     */
+    private function getBarrageTeamCombinations(array $teamIds, int $count): array
+    {
+        if ($count === 0) {
+            return [[]];
+        }
+
+        $combinations = [];
+        for ($i = 0, $length = count($teamIds); $i <= $length - $count; $i++) {
+            $teamId = $teamIds[$i];
+            $remainingTeamIds = array_slice($teamIds, $i + 1);
+            foreach ($this->getBarrageTeamCombinations($remainingTeamIds, $count - 1) as $combination) {
+                $combinations[] = [$teamId, ...$combination];
+            }
+        }
+
+        return $combinations;
+    }
+
+    /**
+     * @param array<int,array<int,int|string>> $schedule
+     *
+     * @return array<int,array<int,int|string>>
+     */
+    private function orderBarrageBaseSchedule(array $schedule): array
+    {
+        $orderedSchedule = [];
+        $lastPlayed = [];
+
+        while (count($schedule) > 0) {
+            $roundIndex = count($orderedSchedule);
+            $previousGame = $orderedSchedule[$roundIndex - 1] ?? [];
+            $twoGamesAgo = $orderedSchedule[$roundIndex - 2] ?? [];
+
+            uasort(
+                $schedule,
+                static function (array $a, array $b) use ($previousGame, $twoGamesAgo, $lastPlayed, $roundIndex): int {
+                    return self::getBarrageBaseScheduleOrderScore(
+                            $a,
+                            $previousGame,
+                            $twoGamesAgo,
+                            $lastPlayed,
+                            $roundIndex
+                        ) <=> self::getBarrageBaseScheduleOrderScore(
+                            $b,
+                            $previousGame,
+                            $twoGamesAgo,
+                            $lastPlayed,
+                            $roundIndex
+                        );
+                }
+            );
+
+            $nextKey = array_key_first($schedule);
+            $nextGame = $schedule[$nextKey];
+            unset($schedule[$nextKey]);
+            $orderedSchedule[] = $nextGame;
+            foreach ($nextGame as $teamId) {
+                $lastPlayed[$teamId] = $roundIndex;
+            }
+        }
+
+        return $orderedSchedule;
+    }
+
+    /**
+     * @param array<int,int|string> $game
+     * @param array<int,int|string> $previousGame
+     * @param array<int,int|string> $twoGamesAgo
+     * @param array<int|string,int> $lastPlayed
+     */
+    private static function getBarrageBaseScheduleOrderScore(
+        array $game,
+        array $previousGame,
+        array $twoGamesAgo,
+        array $lastPlayed,
+        int   $roundIndex
+    ): int
+    {
+        $previousOverlap = count(array_intersect($game, $previousGame));
+        $twoGamesAgoOverlap = count(array_intersect($game, $twoGamesAgo));
+        $waitScore = 0;
+        foreach ($game as $teamId) {
+            $waitScore += $roundIndex - ($lastPlayed[$teamId] ?? -count($lastPlayed) - 1);
+        }
+
+        return ($previousOverlap * 10000) + ($twoGamesAgoOverlap * 1000) - $waitScore;
+    }
+
+    /**
+     * @param list<int|string> $teamIds
+     * @param array<int|string,array<int|string,int>> $teamGamesWithTeams
+     */
+    private static function getBarrageTeamSetPairCount(array $teamIds, array $teamGamesWithTeams): int
+    {
+        $pairCount = 0;
+        foreach ($teamIds as $index => $teamId) {
+            foreach (array_slice($teamIds, $index + 1) as $opponentId) {
+                $pairCount += $teamGamesWithTeams[$teamId][$opponentId] ?? 0;
+            }
+        }
+
+        return $pairCount;
+    }
+
+    private function prepareTwoGroupsGamesBarrage(
+        Tournament          $tournament,
+        TournamentGenerator $tournamentRozlos,
+        int                 $baseGameCount = 3,
+        int                 $maxBarrageRounds = 4
+    ): void
+    {
         $teams = $tournamentRozlos->getTeams();
         shuffle($teams);
 
@@ -619,34 +1328,7 @@ class TournamentProvider
 
         // Generate games for both base groups
         foreach ([$baseGroup1, $baseGroup2] as $baseGroup) {
-            // Initialize team counters
-            /** @var GeneratorTeam[] $teamIds */
-            $teamIds = [];
-            /** @var array<int|string,int> $teamGames Team game counter where game count < baseGameCount */
-            $teamGames = [];
-            /** @var array<int|string,array<int|string,int>> $teamGamesWithTeams */
-            $teamGamesWithTeams = [];
-            foreach ($baseGroup->getTeams() as $team) {
-                $teamIds[$team->getId()] = $team;
-                $teamGames[$team->getId()] = 0;
-                $teamGamesWithTeams[$team->getId()] = [];
-                foreach ($teams as $team2) {
-                    $teamGamesWithTeams[$team->getId()][$team2->getId()] = 0;
-                }
-            }
-
-            bdump($baseGroup->getName());
-            bdump($teamGames);
-
-            $this->generateBarrageBaseGroup(
-                $teamGames,
-                $teamIds,
-                $tournament,
-                $teamGamesWithTeams,
-                $baseGroup,
-                $baseGameCount
-            );
-
+            $this->generateBarrageBaseGroupGames($baseGroup, $baseGroup->getTeams(), $tournament, $baseGameCount);
         }
 
         // Sort the games to minimize one team playing multiple games back to back
@@ -654,29 +1336,44 @@ class TournamentProvider
         $baseGroup2->orderGames();
 
         // Generate playoff round
-        $barrageRounds = min(
-            floor(1 + ((count($teams) - $tournament->teamsInGame) / ($tournament->teamsInGame - 1))),
-            $maxBarrageRounds
+        $teamsInGame = $tournament->teamsInGame;
+        $groupTeamCount = min(count($baseGroup1->getTeams()), count($baseGroup2->getTeams()));
+        $barrageRounds = max(1, min($groupTeamCount - $teamsInGame + 1, $maxBarrageRounds));
+        $placementPointStep = $this->getBarragePlacementPointStep(
+            $tournament,
+            $baseGameCount,
+            $barrageRounds + 1,
+            false
         );
-        bdump($barrageRounds);
+        $this->logger->debug(
+            'Two groups barrage progression setup',
+            [
+                'tournament' => $tournament->id,
+                'teamCount' => count($teams),
+                'teamsInGame' => $teamsInGame,
+                'groupTeamCount' => $groupTeamCount,
+                'barrageRounds' => $barrageRounds,
+                'placementPointStep' => $placementPointStep,
+            ]
+        );
 
         $playoff = $tournamentRozlos->round(lang('Play-off'));
-        $playoffGroup1 = $playoff->group('C')->setInGame($tournament->teamsInGame);
-        $playoffGroup2 = $playoff->group('D')->setInGame($tournament->teamsInGame);
-        // The last players that were not in the
+        $playoffGroup1 = $playoff->group('C')->setInGame($teamsInGame);
+        $playoffGroup2 = $playoff->group('D')->setInGame($teamsInGame);
+        // Pull the first playoff teams from the lowest base standings that can still enter the barrage.
         $progression1 = $baseGroup1->progression(
             $playoffGroup1,
             $barrageRounds - 1,
-            $tournament->teamsInGame,
-        );
+            $teamsInGame,
+        )->setPoints($placementPointStep);
         $progression2 = $baseGroup2->progression(
             $playoffGroup2,
             $barrageRounds - 1,
-            $tournament->teamsInGame,
-        );
+            $teamsInGame,
+        )->setPoints($placementPointStep);
         $group1Teams = [];
         $group2Teams = [];
-        for ($t = 0; $t < $tournament->teamsInGame; $t++) {
+        for ($t = 0; $t < $teamsInGame; $t++) {
             $group1Teams[] = $team = new BlankTeam('C' . $t, $teams[$t], $baseGroup1, $progression1);
             $playoffGroup1->addTeam($team);
             $group2Teams[] = $team = new BlankTeam('D' . $t, $teams[$t], $baseGroup2, $progression2);
@@ -685,98 +1382,217 @@ class TournamentProvider
         $playoffGroup1->game($group1Teams);
         $playoffGroup2->game($group2Teams);
 
-        // Generate the final barrage turns
-        $roundNames = [
-          lang('Finále', domain: 'tournament'),
-          lang('Semifinále', domain: 'tournament'),
-          lang('Čtvrtfinále', domain: 'tournament'),
-          lang('Osmifinále', domain: 'tournament'),
-        ];
+        $roundCounter = 3;
+        $this->generateBarrageRounds(
+            $tournament,
+            $tournamentRozlos,
+            $barrageRounds,
+            $placementPointStep,
+            $roundCounter,
+            function (GeneratorGroup $group) use (
+                $playoffGroup1,
+                $playoffGroup2,
+                $placementPointStep,
+                $teams,
+                $tournament
+            ): array {
+                $progression1 = $playoffGroup1->progression($group, 0, 1)->setPoints(
+                    $placementPointStep - $tournament->points->win
+                );
+                $progression2 = $playoffGroup2->progression($group, 0, 1)->setPoints(
+                    $placementPointStep - $tournament->points->win
+                );
+                $progression3 = $group->multiProgression([$playoffGroup1, $playoffGroup2], 1, 1, 1)->setPoints(
+                    $placementPointStep - $this->getTournamentPointsForPosition(2, $tournament)
+                );
+
+                return [
+                    $this->createBarrageSlot($playoffGroup1, $progression1, $teams[0]),
+                    $this->createBarrageSlot($playoffGroup2, $progression2, $teams[1]),
+                    $this->createBarrageSlot($playoffGroup1, $progression3, $teams[2]),
+                ];
+            },
+            function (
+                int            $roundIndex,
+                int            $stage,
+                GeneratorGroup $newGroup
+            ) use (
+                $baseGroup1,
+                $baseGroup2,
+                $barrageRounds,
+                $placementPointStep,
+                $teams
+            ): array {
+                $points = $stage * $placementPointStep;
+                $progression1 = $baseGroup1->progression(
+                    $newGroup,
+                    $barrageRounds - $roundIndex - 1,
+                    1
+                )->setPoints($points);
+                $progression2 = $baseGroup2->progression(
+                    $newGroup,
+                    $barrageRounds - $roundIndex - 1,
+                    1
+                )->setPoints($points);
+
+                return [
+                    'slots' => [
+                        $this->createBarrageSlot($baseGroup1, $progression1, $teams[0]),
+                        $this->createBarrageSlot($baseGroup2, $progression2, $teams[1]),
+                    ],
+                    'previousTeam' => $teams[2],
+                ];
+            }
+        );
+    }
+
+    /**
+     * @param GeneratorTeam[] $teams
+     *
+     * @throws Exception
+     */
+    private function generateBarrageBaseGroupGames(
+        GeneratorGroup $baseGroup,
+        array          $teams,
+        Tournament     $tournament,
+        int            $baseGameCount
+    ): void
+    {
+        /** @var array<int|string,GeneratorTeam> $teamIds */
+        $teamIds = [];
+        /** @var array<int|string,int> $teamGames */
+        $teamGames = [];
+        /** @var array<int|string,array<int|string,int>> $teamGamesWithTeams */
+        $teamGamesWithTeams = [];
+        foreach ($teams as $team) {
+            $teamIds[$team->getId()] = $team;
+            $teamGames[$team->getId()] = 0;
+            $teamGamesWithTeams[$team->getId()] = [];
+            foreach ($teams as $team2) {
+                $teamGamesWithTeams[$team->getId()][$team2->getId()] = 0;
+            }
+        }
+
+        $this->generateBarrageBaseGroup(
+            $teamGames,
+            $teamIds,
+            $tournament,
+            $teamGamesWithTeams,
+            $baseGroup,
+            $baseGameCount
+        );
+    }
+
+    /**
+     * @param callable(GeneratorGroup):array $firstRoundSlotFactory
+     * @param callable(int,int,GeneratorGroup):array $nextRoundSlotFactory
+     */
+    private function generateBarrageRounds(
+        Tournament          $tournament,
+        TournamentGenerator $tournamentRozlos,
+        int                 $barrageRounds,
+        int                 $placementPointStep,
+        int                 $roundCounter,
+        callable            $firstRoundSlotFactory,
+        callable            $nextRoundSlotFactory
+    ): void
+    {
+        $roundNames = $this->getBarrageRoundNames();
         $otherRoundName = lang('Předkolo', domain: 'tournament');
         $alphabet = range('A', 'Z');
-        $roundCounter = 3;
+        $teamsInGame = $tournament->teamsInGame;
 
-        // First round should have max number of teams already progressed from the play-off.
-        // All next rounds should have max-1 teams progressed.
-        // 1 team progresses from each round to the next.
-        $groupTeams = [];
         $round = $tournamentRozlos->round($roundNames[$barrageRounds - 1] ?? $otherRoundName);
-        $group = $round->group($alphabet[$roundCounter])->setInGame($tournament->teamsInGame);
-        $progression1 = $playoffGroup1->progression(
-            $group,
-            0,
-            1
+        $group = $round->group($alphabet[$roundCounter])->setInGame($teamsInGame);
+        $group->game(
+            $this->addBarrageSlotsToGroup(
+                $group,
+                $firstRoundSlotFactory($group),
+                $alphabet[$roundCounter]
+            )
         );
-        $groupTeams[] = $team = new BlankTeam($alphabet[$roundCounter] . 0, $teams[0], $playoffGroup1, $progression1);
-        $group->addTeam($team);
-        $progression2 = $playoffGroup2->progression(
-            $group,
-            0,
-            1
-        );
-        $groupTeams[] = $team = new BlankTeam($alphabet[$roundCounter] . 1, $teams[1], $playoffGroup2, $progression2);
-        $group->addTeam($team);
-        $progression3 = $group->multiProgression(
-            [$playoffGroup1, $playoffGroup2],
-            1,
-            1,
-            1
-        );
-        $groupTeams[] = $team = new BlankTeam($alphabet[$roundCounter] . 2, $teams[2], $playoffGroup1, $progression3);
-        $group->addTeam($team);
-        $group->game($groupTeams);
-        $pointsIncrement = 20;
-        $progression1->setPoints($pointsIncrement);
-        $progression2->setPoints($pointsIncrement);
-        $progression3->setPoints($pointsIncrement);
 
         for ($i = 1; $i < $barrageRounds; $i++) {
+            $stage = $i + 1;
             $newRound = $tournamentRozlos->round($roundNames[$barrageRounds - 1 - $i] ?? $otherRoundName);
-            $newGroup = $newRound->group($alphabet[$roundCounter + $i + 2])->setInGame($tournament->teamsInGame);
-            $newGroupTeams = [];
+            $newGroup = $newRound->group($alphabet[$roundCounter + $i])->setInGame($teamsInGame);
+            $roundSetup = $nextRoundSlotFactory($i, $stage, $newGroup);
+            $newGroupTeams = $this->addBarrageSlotsToGroup(
+                $newGroup,
+                $roundSetup['slots'],
+                $alphabet[$roundCounter + $i]
+            );
 
-            $progression1 = $baseGroup1->progression(
-                $newGroup,
-                $barrageRounds - $i - 1,
-                1
+            $progression = $group->progression($newGroup, 0, 1)->setPoints(
+                $placementPointStep - $tournament->points->win
             );
             $newGroupTeams[] = $team = new BlankTeam(
-                $alphabet[$roundCounter] . 0,
-                $teams[0],
-                $baseGroup1,
-                $progression1
-            );
-            $newGroup->addTeam($team);
-            $progression2 = $baseGroup2->progression(
-                $newGroup,
-                $barrageRounds - $i - 1,
-                1
-            );
-            $newGroupTeams[] = $team = new BlankTeam(
-                $alphabet[$roundCounter] . 1,
-                $teams[1],
-                $baseGroup2,
-                $progression2
-            );
-            $newGroup->addTeam($team);
-            // Progress team from the previous round
-            $progression3 = $group->progression($newGroup, 0, 1);
-            $newGroupTeams[] = $team = new BlankTeam(
-                $alphabet[$roundCounter] . 2,
-                $teams[2],
+                $alphabet[$roundCounter + $i] . count($newGroupTeams),
+                $roundSetup['previousTeam'],
                 $group,
-                $progression3
+                $progression
             );
             $newGroup->addTeam($team);
-
-            $points = $pointsIncrement * ($barrageRounds + 1);
-            $progression1->setPoints($points);
-            $progression2->setPoints($points);
-            $progression3->setPoints($pointsIncrement);
-
             $newGroup->game($newGroupTeams);
             $group = $newGroup;
         }
+
+        $placementRound = $tournamentRozlos->round(lang('Konečné pořadí', domain: 'tournament'));
+        $placementGroup = $placementRound->group($alphabet[$roundCounter + $barrageRounds])->setInGame($teamsInGame);
+        $group->progression($placementGroup, 0, 1)->setPoints(3 * $placementPointStep);
+        $group->progression($placementGroup, 1, 1)->setPoints(2 * $placementPointStep);
+        $group->progression($placementGroup, 2, 1)->setPoints($placementPointStep);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function getBarrageRoundNames(): array
+    {
+        return [
+            lang('Finále', domain: 'tournament'),
+            lang('Semifinále', domain: 'tournament'),
+            lang('Čtvrtfinále', domain: 'tournament'),
+            lang('Osmifinále', domain: 'tournament'),
+            lang('Šestnáctifinále', domain: 'tournament'),
+        ];
+    }
+
+    /**
+     * @param list<array{from:GeneratorGroup,progression:ProgressionInterface,team:GeneratorTeam}> $slots
+     *
+     * @return list<BlankTeam>
+     */
+    private function addBarrageSlotsToGroup(GeneratorGroup $group, array $slots, string $keyPrefix): array
+    {
+        $groupTeams = [];
+        foreach ($slots as $slot) {
+            $groupTeams[] = $team = new BlankTeam(
+                $keyPrefix . count($groupTeams),
+                $slot['team'],
+                $slot['from'],
+                $slot['progression']
+            );
+            $group->addTeam($team);
+        }
+
+        return $groupTeams;
+    }
+
+    /**
+     * @return array{from:GeneratorGroup,progression:ProgressionInterface,team:GeneratorTeam}
+     */
+    private function createBarrageSlot(
+        GeneratorGroup       $from,
+        ProgressionInterface $progression,
+        GeneratorTeam        $team
+    ): array
+    {
+        return [
+            'from' => $from,
+            'progression' => $progression,
+            'team' => $team,
+        ];
     }
 
     public function progress(Tournament $tournament): int {
@@ -824,18 +1640,40 @@ class TournamentProvider
 
                 // Do the progression
                 $progressionRozlos->progress();
+                $progressedGeneratorTeams = [];
+                foreach ($progressionRozlos->getProgressedTeams() as $team) {
+                    $progressedGeneratorTeams[] = [
+                        'id' => $team->getId(),
+                        'name' => $team->getName(),
+                    ];
+                }
 
                 // Find progressed teams
                 /** @var Team[] $progressedTeams */
                 $progressedTeams = [];
+                $progressedTeamIdsByKey = [];
                 $keys = $progression->getKeys();
                 foreach ($progressionRozlos->getProgressedTeams() as $team) {
                     $key = array_shift($keys);
                     $progressedTeams[$key] = Team::get($team->getId());
+                    $progressedTeamIdsByKey[$key] = $team->getId();
                     if (empty($keys)) {
                         break;
                     }
                 }
+                $this->logger->debug(
+                    'TournamentProvider::progress applied progression',
+                    [
+                        'tournament' => $tournament->id,
+                        'progressionId' => $progression->id,
+                        'fromGroup' => $group->id,
+                        'toGroup' => $progression->to->id,
+                        'start' => $progression->start,
+                        'length' => $progression->length,
+                        'teams' => $progressedGeneratorTeams,
+                        'teamIdsByKey' => $progressedTeamIdsByKey,
+                    ]
+                );
 
                 // Update the games
                 $to = $progression->to;
@@ -872,13 +1710,186 @@ class TournamentProvider
             }
         }
 
+        $this->cleanTournamentCache($tournament);
+
+        return $progressed;
+    }
+
+    public function undoProgression(Tournament $tournament, string $type, int $progressionId): int
+    {
+        $this->logger->debug(
+            'TournamentProvider::undoProgression started',
+            [
+                'tournament' => $tournament->id,
+                'type' => $type,
+                'progressionId' => $progressionId,
+            ]
+        );
+        $progression = $this->getProgressionForTournament($tournament, $type, $progressionId);
+        $changed = $this->clearProgressionTeams($progression);
+
+        if ($changed > 0) {
+            $this->logger->debug(
+                'TournamentProvider::undoProgression recalculating points',
+                [
+                    'tournament' => $tournament->id,
+                    'type' => $type,
+                    'progressionId' => $progressionId,
+                    'changed' => $changed,
+                ]
+            );
+            $this->recalcTeamPoints($tournament);
+            $this->cleanTournamentCache($tournament);
+        }
+
+        $this->logger->debug(
+            'TournamentProvider::undoProgression finished',
+            [
+                'tournament' => $tournament->id,
+                'type' => $type,
+                'progressionId' => $progressionId,
+                'changed' => $changed,
+            ]
+        );
+        return $changed;
+    }
+
+    public function setProgressionTeam(
+        Tournament $tournament,
+        string     $type,
+        int        $progressionId,
+        int        $key,
+        Team       $team
+    ): int
+    {
+        if ($team->tournament->id !== $tournament->id) {
+            throw new RuntimeException(lang('Tým nepatří do tohoto turnaje', domain: 'tournament'));
+        }
+
+        $progression = $this->getProgressionForTournament($tournament, $type, $progressionId);
+        if (!in_array($key, $progression->getKeys(), true)) {
+            throw new RuntimeException(lang('Vybraný slot nepatří do tohoto postupu', domain: 'tournament'));
+        }
+
+        foreach ($progression->to->games as $game) {
+            foreach ($game->teams as $gameTeam) {
+                if ($gameTeam->key !== $key && $gameTeam->team?->id === $team->id) {
+                    throw new RuntimeException(lang('Tým už je v cílové skupině zařazený', domain: 'tournament'));
+                }
+            }
+        }
+
+        $changed = 0;
+        foreach ($progression->to->games as $game) {
+            $gameChanged = false;
+            foreach ($game->teams as $gameTeam) {
+                if ($gameTeam->key !== $key) {
+                    continue;
+                }
+                $this->assertProgressionSlotEditable($gameTeam);
+                if ($gameTeam->team?->id !== $team->id) {
+                    $gameTeam->team = $team;
+                    $gameChanged = true;
+                    $changed++;
+                }
+            }
+            if ($gameChanged) {
+                $game->save();
+            }
+        }
+
+        if ($changed > 0) {
+            $this->recalcTeamPoints($tournament);
+            $this->cleanTournamentCache($tournament);
+        }
+
+        return $changed;
+    }
+
+    private function getProgressionForTournament(
+        Tournament $tournament,
+        string     $type,
+        int        $progressionId
+    ): Progression|MultiProgression
+    {
+        $progression = match ($type) {
+            'progression' => Progression::get($progressionId),
+            'multi' => MultiProgression::get($progressionId),
+            default => throw new RuntimeException(lang('Neplatný typ postupu', domain: 'tournament')),
+        };
+
+        if ($progression->tournament->id !== $tournament->id) {
+            throw new RuntimeException(lang('Postup nepatří do tohoto turnaje', domain: 'tournament'));
+        }
+
+        return $progression;
+    }
+
+    private function clearProgressionTeams(Progression|MultiProgression $progression): int
+    {
+        $keys = $progression->getKeys();
+        $changed = 0;
+
+        foreach ($progression->to->games as $game) {
+            $gameChanged = false;
+            foreach ($game->teams as $gameTeam) {
+                if (!in_array($gameTeam->key, $keys, true)) {
+                    continue;
+                }
+                $this->assertProgressionSlotEditable($gameTeam);
+                if (isset($gameTeam->team)) {
+                    $gameTeam->team = null;
+                    $gameChanged = true;
+                    $changed++;
+                }
+            }
+            if ($gameChanged) {
+                $game->save();
+            }
+        }
+
+        $this->logger->debug(
+            'TournamentProvider::clearProgressionTeams finished',
+            [
+                'progressionId' => $progression->id,
+                'changed' => $changed,
+            ]
+        );
+        return $changed;
+    }
+
+    private function assertProgressionSlotEditable(GameTeam $gameTeam): void
+    {
+        if (
+            $gameTeam->game->hasScores()
+        ) {
+            $this->logger->warning(
+                'TournamentProvider::assertProgressionSlotEditable blocked slot',
+                [
+                    'game' => $gameTeam->game->id,
+                    'gameCode' => $gameTeam->game->code,
+                    'gameTeam' => $gameTeam->id,
+                    'key' => $gameTeam->key,
+                    'team' => $gameTeam->team?->id,
+                    'score' => $gameTeam->score,
+                    'points' => $gameTeam->points,
+                    'position' => $gameTeam->position,
+                    'hasScores' => $gameTeam->game->hasScores(),
+                ]
+            );
+            throw new RuntimeException(
+                lang('Postup nelze změnit, protože cílová hra už má uložené výsledky', domain: 'tournament')
+            );
+        }
+    }
+
+    private function cleanTournamentCache(Tournament $tournament): void
+    {
         $this->cache->clean(
             [
                 $this->cache::Tags => ['tournament/' . $tournament->id . '/group/teams'],
             ]
         );
-
-        return $progressed;
     }
 
     public function reconstructTournament(Tournament $tournament): TournamentGenerator {
@@ -897,6 +1908,7 @@ class TournamentProvider
         $rounds = [];
         $groups = [];
         $games = [];
+        $groupResults = [];
         foreach ($tournament->groups as $group) {
             if (!isset($rounds[$group->round])) {
                 $rounds[$group->round] = $tournamentGenerator->round($group->round);
@@ -917,32 +1929,59 @@ class TournamentProvider
                     continue; // Skip planned games without any teams
                 }
                 $gameTeams = [];
-                $results = [];
+                $resultRows = [];
                 $full = true;
                 foreach ($game->teams as $team) {
-                    if (!isset($teams[$team->team->id])) {
+                    if (!isset($team->team) || !isset($teams[$team->team->id])) {
                         $full = false;
                         continue;
                     }
                     $gameTeams[] = $teams[$team->team->id];
-                    $results[$team->team->id] = $team->score;
+                    if (isset($team->score) || isset($team->points)) {
+                        $resultRows[] = $team;
+                        $groupResults[$group->id][$team->team->id] ??= [
+                            'score' => 0,
+                            'points' => 0,
+                        ];
+                        $groupResults[$group->id][$team->team->id]['score'] += $team->score ?? 0;
+                        $groupResults[$group->id][$team->team->id]['points'] += $team->points ?? 0;
+                    }
                 }
                 $groups[$group->id]->addTeam(...$gameTeams);
                 if (!$full) {
                     continue;
                 }
                 $games[$game->id] = $groups[$group->id]->game($gameTeams)->setId($game->id);
-                if (isset($game->code)) {
+                if (count($resultRows) > 0) {
+                    usort(
+                        $resultRows,
+                        static function (GameTeam $a, GameTeam $b): int {
+                            if (isset($a->position, $b->position)) {
+                                return $a->position <=> $b->position;
+                            }
+                            return ($b->score ?? 0) <=> ($a->score ?? 0);
+                        }
+                    );
+                    $results = [];
+                    foreach ($resultRows as $team) {
+                        if (isset($team->team)) {
+                            $results[$team->team->id] = $team->score ?? 0;
+                        }
+                    }
                     $games[$game->id]->setResults($results);
                 }
             }
 
-            foreach ($group->teams as $team) {
-                if (!isset($teams[$team->id]->groupResults[$group->id])) {
+            foreach ($groupResults[$group->id] ?? [] as $teamId => $result) {
+                if (!isset($teams[$teamId], $teams[$teamId]->groupResults[$group->id])) {
                     continue;
                 }
-                $teams[$team->id]->groupResults[$group->id]['points'] = $team->getPointsForGroup($group);
-                $teams[$team->id]->groupResults[$group->id]['score'] = $team->getScoreForGroup($group);
+                $currentScore = $teams[$teamId]->groupResults[$group->id]['score'];
+                $currentPoints = $teams[$teamId]->groupResults[$group->id]['points'];
+                $teams[$teamId]->groupResults[$group->id]['points'] = $result['points'];
+                $teams[$teamId]->groupResults[$group->id]['score'] = $result['score'];
+                $teams[$teamId]->addScore($result['score'] - $currentScore);
+                $teams[$teamId]->addPoints($result['points'] - $currentPoints);
             }
         }
 
@@ -961,11 +2000,13 @@ class TournamentProvider
 
             // Check if not already progressed
             $keys = $progression->getKeys();
-            foreach ($progression->to as $game) {
+            $filledKeys = [];
+            foreach ($progression->to->games as $game) {
                 foreach ($game->teams as $team) {
                     if (!isset($team->team) || !in_array($team->key, $keys, true)) {
                         continue;
                     }
+                    $filledKeys[] = $team->key;
                     unset($keys[array_search($team->key, $keys)]);
                     if (empty($keys)) {
                         break;
@@ -974,6 +2015,17 @@ class TournamentProvider
                 if (empty($keys)) {
                     break;
                 }
+            }
+            if (empty($keys)) {
+                $this->logger->debug(
+                    'TournamentProvider::reconstructTournament restored completed progression',
+                    [
+                        'tournament' => $tournament->id,
+                        'progressionId' => $progression->id,
+                        'fromGroup' => $progression->from->id,
+                        'toGroup' => $progression->to->id,
+                    ]
+                );
             }
             $progressionRozlos->setProgressed(empty($keys));
             $progression->progression = $progressionRozlos;
@@ -998,11 +2050,13 @@ class TournamentProvider
             )->setPoints($progression->points);
             // Check if not already progressed
             $keys = $progression->getKeys();
-            foreach ($progression->to as $game) {
+            $filledKeys = [];
+            foreach ($progression->to->games as $game) {
                 foreach ($game->teams as $team) {
                     if (!isset($team->team) || !in_array($team->key, $keys, true)) {
                         continue;
                     }
+                    $filledKeys[] = $team->key;
                     unset($keys[array_search($team->key, $keys)]);
                     if (empty($keys)) {
                         break;
@@ -1011,6 +2065,20 @@ class TournamentProvider
                 if (empty($keys)) {
                     break;
                 }
+            }
+            if (empty($keys)) {
+                $this->logger->debug(
+                    'TournamentProvider::reconstructTournament restored completed multi progression',
+                    [
+                        'tournament' => $tournament->id,
+                        'progressionId' => $progression->id,
+                        'fromGroups' => array_map(
+                            static fn(Group $group) => $group->id,
+                            iterator_to_array($progression->from)
+                        ),
+                        'toGroup' => $progression->to->id,
+                    ]
+                );
             }
             $progressionRozlos->setProgressed(empty($keys));
             $progression->progression = $progressionRozlos;
@@ -1022,7 +2090,7 @@ class TournamentProvider
     public function recalcTeamPoints(Tournament $tournament): void {
         $this->logger->debug('TournamentProvider::recalcTeamPoints started', ['tournament' => $tournament->id ?? null]);
         $teams = $tournament->teams;
-        $progressions = $tournament->getProgressions();
+        $progressions = array_merge($tournament->getProgressions(), $tournament->getMultiProgressions());
         /** @var array<int,int> $points Sum points for games for each team */
         $points = DB::select(GameTeam::TABLE, 'id_team, SUM(points) as points')->groupBy('id_team')->fetchPairs(
             'id_team',
@@ -1038,6 +2106,28 @@ class TournamentProvider
                 $progressionKeys = $progression->getKeys();
                 if (in_array($keys[$progression->to->id] ?? null, $progressionKeys, true)) {
                     $team->points += $progression->points;
+                    continue;
+                }
+
+                if (
+                    !empty($progressionKeys) ||
+                    !$progression instanceof Progression ||
+                    !isset($progression->from) ||
+                    count($progression->to->games) > 0
+                ) {
+                    continue;
+                }
+
+                $progressedTeams = array_slice(
+                    $progression->from->getTeamsSorted(),
+                    $progression->start ?? 0,
+                    $progression->length
+                );
+                foreach ($progressedTeams as $progressedTeam) {
+                    if ($progressedTeam->id === $team->id) {
+                        $team->points += $progression->points;
+                        break;
+                    }
                 }
             }
 

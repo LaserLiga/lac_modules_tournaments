@@ -1,0 +1,84 @@
+{layout '../../../../templates/gate/@layout.latte'}
+
+{varType LAC\Modules\Tournament\Models\Tournament $tournament}
+{varType array $bestPlayers}
+{varType array $accuracyPlayers}
+{varType array $shotsPlayers}
+{varType array $hitsOwnPlayers}
+
+{define containerClasses}
+    tournament tournament-players-only
+{/define}
+
+{define playerValue, mixed $value, string $format}
+    {if $format === 'percent'}
+        {$value}%
+    {elseif $format === 'decimal'}
+        {$value|number:2,',','&nbsp;'|noescape}
+    {else}
+        {$value|number:0,',','&nbsp;'|noescape}
+    {/if}
+{/define}
+
+{define playerAvatar, LAC\Modules\Tournament\Models\Player $player}
+    <img n:if="$player->user !== null" src="https://laserliga.cz/user/{$player->user->getCode()}/avatar"
+                                       alt="{$player->nickname}" class="player-avatar">
+{/define}
+
+{define playerTitle, LAC\Modules\Tournament\Models\Player $player}
+    <img n:if="$player->user !== null" src="https://laserliga.cz/user/{$player->user->getCode()}/title/svg"
+                                       alt="title" class="player-title-image">
+{/define}
+
+{define playerPodium, string $title, string $icon, array $players, string $valueLabel, string $format}
+    <section class="player-podium">
+        {var string $iconSvg = svgIcon($icon, '', '1.5em')}
+		<h2>
+                <span class="category-icon">{$iconSvg|noescape}</span>
+                <span>{$title}</span>
+		</h2>
+
+		{var $winner = $players[0] ?? null}
+        <div n:if="$winner !== null" class="podium-winner">
+            {include playerAvatar, player: $winner['player']}
+
+            <div class="player-name">{$winner['player']->nickname}</div>
+			{include playerTitle, player: $winner['player']}
+            <div class="player-value">
+                <span>{$valueLabel}</span>
+                <strong>{include playerValue, value: $winner['value'], format: $format}</strong>
+            </div>
+        </div>
+
+        <div class="podium-runners" n:if="count($players) > 1">
+            {foreach array_slice($players, 1, 2) as $info}
+                <div class="runner">
+                    <div class="place">{$iterator->counter + 1}.</div>
+                    {include playerAvatar, player: $info['player']}
+                    <div class="runner-body">
+                        <div class="player-name">{$info['player']->nickname}</div>
+                        {include playerTitle, player: $info['player']}
+                    </div>
+                    <div class="player-value">
+                        <span>{$valueLabel}</span>
+                        <strong>{include playerValue, value: $info['value'], format: $format}</strong>
+                    </div>
+                </div>
+            {/foreach}
+        </div>
+    </section>
+{/define}
+
+{define content}
+    <header class="tournament-screen-header">
+        <h1>{$tournament->name}</h1>
+        <h2>{_'Nejlepší hráči', domain: 'tournament'}</h2>
+    </header>
+
+    <div class="tournament-player-grid">
+        {include playerPodium, title: lang('Nejlepší hráči', domain: 'tournament'), icon: 'crown', players: $bestPlayers, valueLabel: lang('Body', domain: 'tournament'), format: 'decimal'}
+		{include playerPodium, title: lang('Nejpřesnější hráči', domain: 'tournament'), icon: 'target', players: $accuracyPlayers, valueLabel: lang('Přesnost', domain: 'tournament'), format: 'percent'}
+		{include playerPodium, title: lang('Největší mimoňi', domain: 'tournament'), icon: 'bullets', players: $shotsPlayers, valueLabel: lang('Výstřely', domain: 'tournament'), format: 'integer'}
+		{include playerPodium, title: lang('Zabijáci vlastních', domain: 'tournament'), icon: 'dead', players: $hitsOwnPlayers, valueLabel: lang('Zásahy', domain: 'tournament'), format: 'integer'}
+    </div>
+{/define}
