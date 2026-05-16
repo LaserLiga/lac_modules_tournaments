@@ -26,6 +26,7 @@
                         <label for="team-name-{$team->id}">{_'Název týmu', domain: 'tournament'}</label>
                     </div>
 
+                    <div class="team-players">
 					<div n:foreach="$team->players as $player" class="input-group player">
                         <input type="hidden" class="player-code" name="teams[{$team->id}][players][{$player->id}][code]"
                                value="{$player->user?->getCode()}">
@@ -57,6 +58,11 @@
                             </div>
                         </div>
                     </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-3 add-player"
+                            data-team="{$team->id}">
+                        {faSolid 'plus'} {_'Přidat hráče', domain: 'tournament'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -83,6 +89,7 @@
                     <label for="team-name-#">{_'Název týmu', domain: 'tournament'}</label>
                 </div>
 
+                <div class="team-players">
                 <div n:for="$i = 0; $i < $tournament->teamSize + $tournament->subCount; $i++"
                         class="input-group player">
                     <input type="hidden" class="player-code" name="teams[#][players][n{$i}][code]" value="">
@@ -113,6 +120,42 @@
                             <label for="team-player-sub-#-n{$i}">{_'Náhradník', domain: 'tournament', context: 'team.player'}</label>
                         </div>
                     </div>
+                </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-3 add-player" data-team="#">
+                    {faSolid 'plus'} {_'Přidat hráče', domain: 'tournament'}
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <template id="team-player-template">
+        <div class="input-group player">
+            <input type="hidden" class="player-code" name="teams[#team#][players][#player#][code]" value="">
+            <div class="form-floating">
+                <input type="text" id="team-player-name-#team#-#player#" class="form-control"
+                       name="teams[#team#][players][#player#][name]" value=""
+                       placeholder="{_'Jméno', domain: 'tournament', context: 'team.player'}">
+                <label for="team-player-name-#team#-#player#">{_'Jméno', domain: 'tournament', context: 'team.player'}</label>
+            </div>
+            <div class="form-floating">
+                <input type="text" id="team-player-surname-#team#-#player#" class="form-control"
+                       name="teams[#team#][players][#player#][surname]" value=""
+                       placeholder="{_'Příjmení', domain: 'tournament', context: 'team.player'}">
+                <label for="team-player-surname-#team#-#player#">{_'Příjmení', domain: 'tournament', context: 'team.player'}</label>
+            </div>
+            <div class="form-floating">
+                <input type="text" id="team-player-nickname-#team#-#player#" class="form-control player-nickname"
+                       name="teams[#team#][players][#player#][nickname]"
+                       value="" placeholder="{_'Přezdívka', domain: 'tournament', context: 'team.player'}" required>
+                <label for="team-player-nickname-#team#-#player#">{_'Přezdívka', domain: 'tournament', context: 'team.player'}</label>
+            </div>
+            <div class="input-group-text">
+                <div class="form-check">
+                    <input type="checkbox" value="1" class="form-check-input"
+                           id="team-player-sub-#team#-#player#"
+                           name="teams[#team#][players][#player#][sub]">
+                    <label for="team-player-sub-#team#-#player#">{_'Náhradník', domain: 'tournament', context: 'team.player'}</label>
                 </div>
             </div>
         </div>
