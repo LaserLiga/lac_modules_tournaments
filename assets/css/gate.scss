@@ -393,7 +393,7 @@
         .tournament-standings-board {
           display: grid;
           grid-template-rows: auto 1fr;
-          gap: 1rem;
+          gap: .65rem;
           align-self: stretch;
           min-height: 0;
           padding: 0;
@@ -425,13 +425,13 @@
           display: grid;
           grid-template-rows: auto auto minmax(0, 1fr) auto auto;
           justify-items: center;
-          gap: .45rem;
-          min-height: 17rem;
-          padding: 1rem;
+          gap: .28rem;
+          min-height: 13.6rem;
+          padding: .65rem .85rem;
           text-align: center;
 
           &.rank-1 {
-            min-height: 20rem;
+            min-height: 15rem;
             border: .25rem solid #ffc107;
             background: linear-gradient(180deg, rgba(255, 248, 220, .98), rgba(255, 255, 255, .95));
 
@@ -453,8 +453,40 @@
           }
 
           .team-logo {
-            width: 5rem;
-            height: 5rem;
+            width: 3.8rem;
+            height: 3.8rem;
+          }
+
+          .standing-rank {
+            font-size: 1.3rem;
+          }
+
+          .standing-team-name {
+            font-size: 1.25rem;
+          }
+
+          .standing-points strong {
+            font-size: 2.25rem;
+          }
+
+          .standing-score strong {
+            font-size: .95rem;
+          }
+
+          .standing-stat {
+            padding: .16rem .32rem;
+
+            span {
+              font-size: .6rem;
+            }
+
+            strong {
+              font-size: .82rem;
+            }
+          }
+
+          .standing-next-game {
+            padding: .16rem .32rem;
           }
         }
 

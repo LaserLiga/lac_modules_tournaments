@@ -327,6 +327,8 @@ class TournamentProvider
             }
         }
 
+        $this->logger->info('Finished game synchronization - #' . $tournament->id);
+
         return true;
     }
 
