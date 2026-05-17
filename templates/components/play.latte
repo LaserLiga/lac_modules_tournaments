@@ -6,6 +6,7 @@
 {varType App\Models\Playlist[] $playlists}
 {varType App\GameModels\Vest[] $vests}
 {varType int[] $teamColors}
+{varType string[] $gateActions}
 
 
 <div class="row">
@@ -52,6 +53,26 @@
 						data-alert="{_'Postoupeno skupin:', domain: 'tournament'}">
 					{_'Postoupit týmy', domain: 'tournament'}
                 </button>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" data-toggle="tooltip" title="{_'Akce výsledkové tabule'}">
+                        {faSolid 'display'}
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="#" data-toggle="gate" data-id="last" data-system="all">
+                                {faSolid 'bullseye'}
+                                {_'Zobrazit poslední hru'}
+                            </a>
+                        </li>
+                        <li n:foreach="$gateActions as $gateAction">
+                            <a class="dropdown-item" href="#" data-toggle="gate-event" data-event="{$gateAction}"
+                               data-time="60">
+                                {$gateAction}
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <a n:ifset="$game->nextGame"
                         href="{link 'tournament', (string) $tournament->id, 'play', (string) $game->nextGame->id}"
                                        class="btn btn-secondary">

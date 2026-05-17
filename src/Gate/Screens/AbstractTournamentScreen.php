@@ -73,11 +73,12 @@ abstract class AbstractTournamentScreen extends GateScreen
             return [];
         }
 
+        $cacheTag = 'tournament/' . $tournament->id . '/players/results';
         $values = match ($metric) {
-            'skill' => $this->fetchAveragePlayerValues($playerIds, 'skill'),
-            'accuracy' => $this->fetchMaxPlayerValues($playerIds, 'accuracy'),
-            'shots' => $this->fetchSumPlayerValues($playerIds, 'shots'),
-            'hitsOwn' => $this->fetchSumPlayerValues($playerIds, 'hits_own'),
+            'skill' => $this->fetchAveragePlayerValues($playerIds, 'skill', $cacheTag),
+            'accuracy' => $this->fetchMaxPlayerValues($playerIds, 'accuracy', $cacheTag),
+            'shots' => $this->fetchSumPlayerValues($playerIds, 'shots', $cacheTag),
+            'hitsOwn' => $this->fetchSumPlayerValues($playerIds, 'hits_own', $cacheTag),
             default => [],
         };
 
@@ -115,7 +116,7 @@ abstract class AbstractTournamentScreen extends GateScreen
      * @param int[] $playerIds
      * @return array<int,float>
      */
-    private function fetchAveragePlayerValues(array $playerIds, string $column): array
+    private function fetchAveragePlayerValues(array $playerIds, string $column, string $cacheTag): array
     {
         $sums = [];
         $counts = [];
@@ -124,6 +125,7 @@ abstract class AbstractTournamentScreen extends GateScreen
             $systemRows = DB::select($table, $fields)
                 ->where('[id_tournament_player] IN %in', $playerIds)
                 ->groupBy('id_tournament_player')
+                ->cacheTags($cacheTag)
                 ->fetchAll();
 
             foreach ($systemRows as $row) {
@@ -145,13 +147,14 @@ abstract class AbstractTournamentScreen extends GateScreen
      * @param int[] $playerIds
      * @return array<int,int>
      */
-    private function fetchMaxPlayerValues(array $playerIds, string $column): array
+    private function fetchMaxPlayerValues(array $playerIds, string $column, string $cacheTag): array
     {
         $values = [];
         foreach ([Evo5Player::TABLE, Evo6Player::TABLE] as $table) {
             $systemRows = DB::select($table, '[id_tournament_player], MAX([' . $column . ']) as [value]')
                 ->where('[id_tournament_player] IN %in', $playerIds)
                 ->groupBy('id_tournament_player')
+                ->cacheTags($cacheTag)
                 ->fetchAll();
 
             foreach ($systemRows as $row) {
@@ -167,13 +170,14 @@ abstract class AbstractTournamentScreen extends GateScreen
      * @param int[] $playerIds
      * @return array<int,int>
      */
-    private function fetchSumPlayerValues(array $playerIds, string $column): array
+    private function fetchSumPlayerValues(array $playerIds, string $column, string $cacheTag): array
     {
         $values = [];
         foreach ([Evo5Player::TABLE, Evo6Player::TABLE] as $table) {
             $systemRows = DB::select($table, '[id_tournament_player], SUM([' . $column . ']) as [value]')
                 ->where('[id_tournament_player] IN %in', $playerIds)
                 ->groupBy('id_tournament_player')
+                ->cacheTags($cacheTag)
                 ->fetchAll();
 
             foreach ($systemRows as $row) {

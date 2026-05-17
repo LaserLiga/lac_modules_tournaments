@@ -44,6 +44,7 @@ class GameDataExtension implements GameDataExtensionInterface
 
             $tournamentProvider = App::getServiceByType(TournamentProvider::class);
             $tournamentProvider->recalcTeamPoints($game->tournamentGame->tournament);
+            $tournamentProvider->cleanTournamentCache($game->tournamentGame->tournament);
         }
         return true;
     }

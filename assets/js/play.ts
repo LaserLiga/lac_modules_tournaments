@@ -7,6 +7,7 @@ import {shuffle} from '../../../../assets/js/includes/functions';
 import {fetchGet, fetchPost} from '../../../../assets/js/includes/apiClient';
 import {triggerNotificationError} from '../../../../assets/js/includes/notifications';
 import {LoadGameResponse} from '../../../../assets/js/api/endpoints/games';
+import {gateActions} from '../../../../assets/js/components/gateActions';
 
 declare global {
 	const vests: {
@@ -33,6 +34,8 @@ window.addEventListener('load', () => {
 });
 
 function initContent(form: HTMLFormElement) {
+    gateActions();
+
 	let selectedVests = new Set<string>;
 	const progressTeams = document.getElementById('progressTeams') as HTMLButtonElement;
 	progressTeams.addEventListener('click', () => {

@@ -1885,11 +1885,16 @@ class TournamentProvider
         }
     }
 
-    private function cleanTournamentCache(Tournament $tournament): void
+    public function cleanTournamentCache(Tournament $tournament): void
     {
         $this->cache->clean(
             [
-                $this->cache::Tags => ['tournament/' . $tournament->id . '/group/teams'],
+                $this->cache::Tags => [
+                    'tournament/' . $tournament->id . '/group/teams',
+                    'tournament/' . $tournament->id . '/players/results',
+                    'sql/' . \App\GameModels\Game\Lasermaxx\Evo5\Player::TABLE,
+                    'sql/' . \App\GameModels\Game\Lasermaxx\Evo6\Player::TABLE,
+                ],
             ]
         );
     }
