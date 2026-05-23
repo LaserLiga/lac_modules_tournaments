@@ -38,34 +38,43 @@
 	<div class="tab-content" id="results-tabs">
 		<div class="tab-pane fade show active" id="summary-tab" role="tabpanel" aria-labelledby="summary-tab-control"
 			 tabindex="0">
-			<table class="table table-striped">
-				<thead>
-				<tr>
-					<th></th>
-                    <th>{_'Tým', domain: 'tournament'}</th>
-                    <th>{_'Výhry', domain: 'tournament'}</th>
-                    <th>{_'Remízy', domain: 'tournament'}</th>
-                    <th>{_'Prohry', domain: 'tournament'}</th>
-                    <th>{_'Body', domain: 'tournament'}</th>
-                    <th>{_'Skóre', domain: 'tournament'}</th>
-				</tr>
-				</thead>
-				<tbody>
-				<tr n:foreach="$teams as $team">
-					<td>{$iterator->counter}.</td>
-					<td>
-						<img src="{ifset $team->image}{$team->getImageUrl()}{else}{getUrl}assets/images/gate/questionmark.jpg{/ifset}"
-							 alt="{$team->name}" class="team-logo object-fit-cover rounded-circle" style="width: 2rem;">
-						<span class="team-name">{$team->name}</span>
-					</td>
-					<td>{$team->wins}</td>
-					<td>{$team->draws}</td>
-					<td>{$team->losses}</td>
-					<td>{$team->points}</td>
-					<td>{$team->score|number:0,',','&nbsp;'|noescape}</td>
-				</tr>
-				</tbody>
-			</table>
+            <form action="{link 'tournament', (string) $tournament->id, 'results', 'points'}" method="post">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th></th>
+                        <th>{_'Tým', domain: 'tournament'}</th>
+                        <th>{_'Výhry', domain: 'tournament'}</th>
+                        <th>{_'Remízy', domain: 'tournament'}</th>
+                        <th>{_'Prohry', domain: 'tournament'}</th>
+                        <th>{_'Body', domain: 'tournament'}</th>
+                        <th>{_'Skóre', domain: 'tournament'}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr n:foreach="$teams as $team">
+                        <td>{$iterator->counter}.</td>
+                        <td>
+                            <img src="{ifset $team->image}{$team->getImageUrl()}{else}{getUrl}assets/images/gate/questionmark.jpg{/ifset}"
+                                 alt="{$team->name}" class="team-logo object-fit-cover rounded-circle"
+                                 style="width: 2rem;">
+                            <span class="team-name">{$team->name}</span>
+                        </td>
+                        <td>{$team->wins}</td>
+                        <td>{$team->draws}</td>
+                        <td>{$team->losses}</td>
+                        <td style="max-width: 8rem;">
+                            <input type="number" name="points[{$team->id}]" value="{$team->points}"
+                                   class="form-control form-control-sm">
+                        </td>
+                        <td>{$team->score|number:0,',','&nbsp;'|noescape}</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <button type="submit" class="btn btn-primary">
+                    {_'Uložit body týmů', domain: 'tournament'}
+                </button>
+            </form>
 		</div>
 		<div class="tab-pane fade" id="individual-tab" role="tabpanel" aria-labelledby="individual-tab-control"
 			 tabindex="0">

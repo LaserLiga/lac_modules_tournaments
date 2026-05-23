@@ -414,7 +414,12 @@ class TournamentController extends Controller
                             $progression->getFrom()
                         );
                         sort($ids);
-                        $key = implode('-', $ids) . '->' . $group->id;
+                        $key = implode('-', $ids) . '->' . $group->id . ':' .
+                            $progression->getStart() . ':' .
+                            ($progression->getLen() ?? 'all') . ':' .
+                            $progression->getTotalStart() . ':' .
+                            ($progression->getTotalCount() ?? 'all') . ':' .
+                            ($progression->getPoints() ?? 0);
                         $multiProgressions[$key] = $progression;
                     }
                 }
@@ -1051,6 +1056,43 @@ class TournamentController extends Controller
         $results->save();
 
         return $this->respond(['success' => true]);
+    }
+
+    public function updateTournamentGameResults(Tournament $tournament, Game $game, Request $request): ResponseInterface
+    {
+        if ($game->tournament->id !== $tournament->id) {
+            return $this->respond(['error' => lang('Hra nepatří do tohoto turnaje.', domain: 'tournament')], 400);
+        }
+
+        $teams = $request->getPost('teams', []);
+        if (!is_array($teams)) {
+            return $this->respond(['error' => lang('Neplatná data výsledků.', domain: 'tournament')], 400);
+        }
+
+        foreach ($game->teams as $gameTeam) {
+            if (!isset($gameTeam->id, $teams[$gameTeam->id]) || !is_array($teams[$gameTeam->id])) {
+                continue;
+            }
+
+            $data = $teams[$gameTeam->id];
+            $gameTeam->score = $this->nullableInt($data['score'] ?? null);
+            $gameTeam->points = $this->nullableInt($data['points'] ?? null);
+            $gameTeam->save();
+        }
+
+        $this->tournamentProvider->recalcTeamPoints($tournament);
+        $this->tournamentProvider->cleanTournamentCache($tournament);
+
+        return $this->respond(['success' => true]);
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int)$value : null;
     }
 
     public function resetGame(Tournament $tournament, Game $game): ResponseInterface

@@ -106,6 +106,35 @@ function initContent(form: HTMLFormElement) {
 					window.location.reload();
 				})
 				.catch(e => {
+                    stopLoading(false);
+                    triggerNotificationError(e);
+                });
+        });
+
+        const updateTournamentResultsBtn = results.querySelector('#updateTournamentResults') as HTMLButtonElement | null;
+        updateTournamentResultsBtn?.addEventListener('click', e => {
+            e.preventDefault();
+            const teams: { [index: number]: { score: string, points: string } } = {};
+            const scoreInputs = results.querySelectorAll<HTMLInputElement>('.tournament-result-score');
+            const pointsInputs = results.querySelectorAll<HTMLInputElement>('.tournament-result-points');
+
+            scoreInputs.forEach(input => {
+                const id = parseInt(input.dataset.team);
+                teams[id] ??= {score: '', points: ''};
+                teams[id].score = input.value;
+            });
+            pointsInputs.forEach(input => {
+                const id = parseInt(input.dataset.team);
+                teams[id] ??= {score: '', points: ''};
+                teams[id].points = input.value;
+            });
+
+            startLoading();
+            fetchPost(results.dataset.updateResults, {teams})
+                .then(() => {
+                    window.location.reload();
+                })
+                .catch(e => {
 					stopLoading(false);
 					triggerNotificationError(e);
 				});

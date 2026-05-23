@@ -8,6 +8,7 @@ use App\Gate\Models\GateType;
 use LAC\Modules\Tournament\Models\Player as TournamentPlayer;
 use LAC\Modules\Tournament\Models\Team;
 use LAC\Modules\Tournament\Models\Tournament;
+use LAC\Modules\Tournament\Services\TournamentProvider;
 use Lsr\Core\Controllers\Controller;
 use Lsr\Core\Requests\Dto\ErrorResponse;
 use Lsr\Core\Requests\Enums\ErrorType;
@@ -19,7 +20,11 @@ use Throwable;
 
 class TournamentResults extends Controller
 {
-    public function __construct(private readonly Gate $gate) {
+    public function __construct(
+        private readonly Gate               $gate,
+        private readonly TournamentProvider $tournamentProvider,
+    )
+    {
     }
 
     public function results(Tournament $tournament): ResponseInterface {
@@ -107,6 +112,32 @@ class TournamentResults extends Controller
         }
 
         return $this->view('../modules/Tournament/templates/results');
+    }
+
+    public function updateTeamPoints(Tournament $tournament, Request $request): ResponseInterface
+    {
+        $points = $request->getPost('points', []);
+        if (!is_array($points)) {
+            $request->addPassError(lang('Neplatná data bodů.', domain: 'tournament'));
+            return $this->app->redirect(['tournament', (string)$tournament->id, 'results'], $request);
+        }
+
+        foreach ($tournament->teams as $team) {
+            if (!isset($team->id, $points[$team->id]) || !is_numeric($points[$team->id])) {
+                continue;
+            }
+
+            $team->points = (int)$points[$team->id];
+            $team->save();
+        }
+
+        $this->tournamentProvider->cleanTournamentCache($tournament);
+        $request->passNotices[] = [
+            'type' => 'success',
+            'content' => lang('Body týmů byly uloženy.', domain: 'tournament'),
+        ];
+
+        return $this->app->redirect(['tournament', (string)$tournament->id, 'results'], $request);
     }
 
     public function gate(

@@ -1012,6 +1012,26 @@ class TournamentProvider
                     'slots' => $slots,
                     'previousTeam' => $teams[$baseStart + count($slots)],
                 ];
+            },
+            function () use (
+                $preliminaryGroup,
+                $preliminarySurvivors,
+                $teamsInGame
+            ): array {
+                if ($preliminaryGroup === null) {
+                    return [];
+                }
+
+                $sources = [];
+                for ($position = $preliminarySurvivors; $position < $teamsInGame; $position++) {
+                    $sources[] = [
+                        'groups' => [$preliminaryGroup],
+                        'start' => $position,
+                        'length' => 1,
+                    ];
+                }
+
+                return $sources;
             }
         );
     }
@@ -1444,6 +1464,52 @@ class TournamentProvider
                     ],
                     'previousTeam' => $teams[2],
                 ];
+            },
+            function () use (
+                $baseGroup1,
+                $baseGroup2,
+                $playoffGroup1,
+                $playoffGroup2,
+                $barrageRounds,
+                $groupTeamCount,
+                $teamsInGame
+            ): array {
+                $sources = [];
+
+                $sources[] = [
+                    'groups' => [$playoffGroup1, $playoffGroup2],
+                    'start' => 1,
+                    'length' => 1,
+                    'totalStart' => 1,
+                    'totalLength' => 1,
+                ];
+
+                for ($position = 2; $position < $teamsInGame; $position++) {
+                    for ($rank = 0; $rank < 2; $rank++) {
+                        $sources[] = [
+                            'groups' => [$playoffGroup1, $playoffGroup2],
+                            'start' => $position,
+                            'length' => 1,
+                            'totalStart' => $rank,
+                            'totalLength' => 1,
+                        ];
+                    }
+                }
+
+                $bottomStart = $barrageRounds - 1 + $teamsInGame;
+                for ($position = $bottomStart; $position < $groupTeamCount; $position++) {
+                    for ($rank = 0; $rank < 2; $rank++) {
+                        $sources[] = [
+                            'groups' => [$baseGroup1, $baseGroup2],
+                            'start' => $position,
+                            'length' => 1,
+                            'totalStart' => $rank,
+                            'totalLength' => 1,
+                        ];
+                    }
+                }
+
+                return $sources;
             }
         );
     }
@@ -1488,6 +1554,13 @@ class TournamentProvider
     /**
      * @param callable(GeneratorGroup):array $firstRoundSlotFactory
      * @param callable(int,int,GeneratorGroup):array $nextRoundSlotFactory
+     * @param null|callable():list<array{
+     *     groups:list<GeneratorGroup>,
+     *     start:int,
+     *     length:int,
+     *     totalStart?:int,
+     *     totalLength?:int
+     * }> $extraFinalPlacementSourceFactory
      */
     private function generateBarrageRounds(
         Tournament          $tournament,
@@ -1496,16 +1569,19 @@ class TournamentProvider
         int                 $placementPointStep,
         int                 $roundCounter,
         callable            $firstRoundSlotFactory,
-        callable            $nextRoundSlotFactory
+        callable  $nextRoundSlotFactory,
+        ?callable $extraFinalPlacementSourceFactory = null
     ): void
     {
         $roundNames = $this->getBarrageRoundNames();
         $otherRoundName = lang('Předkolo', domain: 'tournament');
         $alphabet = range('A', 'Z');
         $teamsInGame = $tournament->teamsInGame;
+        $barrageGroups = [];
 
         $round = $tournamentRozlos->round($roundNames[$barrageRounds - 1] ?? $otherRoundName);
         $group = $round->group($alphabet[$roundCounter])->setInGame($teamsInGame);
+        $barrageGroups[] = $group;
         $group->game(
             $this->addBarrageSlotsToGroup(
                 $group,
@@ -1518,6 +1594,7 @@ class TournamentProvider
             $stage = $i + 1;
             $newRound = $tournamentRozlos->round($roundNames[$barrageRounds - 1 - $i] ?? $otherRoundName);
             $newGroup = $newRound->group($alphabet[$roundCounter + $i])->setInGame($teamsInGame);
+            $barrageGroups[] = $newGroup;
             $roundSetup = $nextRoundSlotFactory($i, $stage, $newGroup);
             $newGroupTeams = $this->addBarrageSlotsToGroup(
                 $newGroup,
@@ -1541,9 +1618,56 @@ class TournamentProvider
 
         $placementRound = $tournamentRozlos->round(lang('Konečné pořadí', domain: 'tournament'));
         $placementGroup = $placementRound->group($alphabet[$roundCounter + $barrageRounds])->setInGame($teamsInGame);
-        $group->progression($placementGroup, 0, 1)->setPoints(3 * $placementPointStep);
-        $group->progression($placementGroup, 1, 1)->setPoints(2 * $placementPointStep);
-        $group->progression($placementGroup, 2, 1)->setPoints($placementPointStep);
+        $placementSources = [];
+        $reversedBarrageGroups = array_reverse($barrageGroups);
+        foreach ($reversedBarrageGroups as $index => $barrageGroup) {
+            $startPosition = $index === 0 ? 0 : 1;
+            for ($position = $startPosition; $position < $teamsInGame; $position++) {
+                $placementSources[] = [
+                    'groups' => [$barrageGroup],
+                    'start' => $position,
+                    'length' => 1,
+                ];
+            }
+        }
+        if ($extraFinalPlacementSourceFactory !== null) {
+            $placementSources = [
+                ...$placementSources,
+                ...$extraFinalPlacementSourceFactory(),
+            ];
+        }
+        $this->addFinalPlacementProgressions($placementGroup, $placementSources, $placementPointStep);
+    }
+
+    /**
+     * @param list<array{groups:list<GeneratorGroup>,start:int,length:int,totalStart?:int,totalLength?:int}> $sources
+     */
+    private function addFinalPlacementProgressions(
+        GeneratorGroup $placementGroup,
+        array          $sources,
+        int            $placementPointStep
+    ): void
+    {
+        $placementCount = count($sources);
+        foreach ($sources as $index => $source) {
+            $points = ($placementCount - $index) * $placementPointStep;
+            if (count($source['groups']) === 1) {
+                $source['groups'][0]->progression(
+                    $placementGroup,
+                    $source['start'],
+                    $source['length']
+                )->setPoints($points);
+                continue;
+            }
+
+            $placementGroup->multiProgression(
+                $source['groups'],
+                $source['start'],
+                $source['length'],
+                $source['totalLength'] ?? null,
+                $source['totalStart'] ?? 0
+            )->setPoints($points);
+        }
     }
 
     /**
@@ -2098,6 +2222,7 @@ class TournamentProvider
         $this->logger->debug('TournamentProvider::recalcTeamPoints started', ['tournament' => $tournament->id ?? null]);
         $teams = $tournament->teams;
         $progressions = array_merge($tournament->getProgressions(), $tournament->getMultiProgressions());
+        $pointsOnlyProgressedTeams = [];
         /** @var array<int,int> $points Sum points for games for each team */
         $points = DB::select(GameTeam::TABLE, 'id_team, SUM(points) as points')->groupBy('id_team')->fetchPairs(
             'id_team',
@@ -2116,25 +2241,14 @@ class TournamentProvider
                     continue;
                 }
 
-                if (
-                    !empty($progressionKeys) ||
-                    !$progression instanceof Progression ||
-                    !isset($progression->from) ||
-                    count($progression->to->games) > 0
-                ) {
+                if (!empty($progressionKeys) || count($progression->to->games) > 0) {
                     continue;
                 }
 
-                $progressedTeams = array_slice(
-                    $progression->from->getTeamsSorted(),
-                    $progression->start ?? 0,
-                    $progression->length
-                );
-                foreach ($progressedTeams as $progressedTeam) {
-                    if ($progressedTeam->id === $team->id) {
-                        $team->points += $progression->points;
-                        break;
-                    }
+                $progressionKey = $progression::TABLE . '/' . $progression->id;
+                $pointsOnlyProgressedTeams[$progressionKey] ??= $this->getPointsOnlyProgressedTeamIds($progression);
+                if (in_array($team->id, $pointsOnlyProgressedTeams[$progressionKey], true)) {
+                    $team->points += $progression->points;
                 }
             }
 
@@ -2144,6 +2258,85 @@ class TournamentProvider
         $this->logger->debug(
             'TournamentProvider::recalcTeamPoints finished',
             ['tournament' => $tournament->id ?? null, 'teams' => count($teams)]
+        );
+    }
+
+    /**
+     * @return int[]
+     */
+    private function getPointsOnlyProgressedTeamIds(Progression|MultiProgression $progression): array
+    {
+        if ($progression instanceof Progression) {
+            if (!isset($progression->from)) {
+                return [];
+            }
+
+            return array_values(
+                array_filter(
+                    array_map(
+                        static fn(Team $team): ?int => $team->id,
+                        array_slice(
+                            $progression->from->getTeamsSorted(),
+                            $progression->start ?? 0,
+                            $progression->length
+                        )
+                    ),
+                    static fn(?int $id): bool => $id !== null
+                )
+            );
+        }
+
+        $fromGroups = iterator_to_array($progression->from);
+        if ($fromGroups === []) {
+            return [];
+        }
+
+        $progressedTeams = [];
+        foreach ($fromGroups as $group) {
+            $progressedTeams = [
+                ...$progressedTeams,
+                ...array_slice(
+                    $group->getTeamsSorted(),
+                    $progression->start ?? 0,
+                    $progression->length
+                ),
+            ];
+        }
+
+        if ($progression->totalLength !== null) {
+            usort(
+                $progressedTeams,
+                static function (Team $a, Team $b) use ($fromGroups): int {
+                    $pointsA = 0;
+                    $pointsB = 0;
+                    $scoreA = 0;
+                    $scoreB = 0;
+                    foreach ($fromGroups as $group) {
+                        $pointsA += $a->getPointsForGroup($group);
+                        $pointsB += $b->getPointsForGroup($group);
+                        $scoreA += $a->getScoreForGroup($group);
+                        $scoreB += $b->getScoreForGroup($group);
+                    }
+
+                    if ($pointsA === $pointsB) {
+                        return $scoreB <=> $scoreA;
+                    }
+
+                    return $pointsB <=> $pointsA;
+                }
+            );
+            $progressedTeams = array_slice(
+                $progressedTeams,
+                $progression->totalStart ?? 0,
+                $progression->totalLength
+            );
+        }
+
+        return array_values(
+            array_filter(
+                array_map(static fn(Team $team): ?int => $team->id, $progressedTeams),
+                static fn(?int $id): bool => $id !== null
+            )
         );
     }
 }

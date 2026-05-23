@@ -85,7 +85,8 @@
         </section>
 		{if $game->code !== null && $game->game !== null}
 			{var App\GameModels\Game\Game $results = $game->game}
-            <section id="results" class="text-center p-3 my-3 rounded border text-dark">
+            <section id="results" class="text-center p-3 my-3 rounded border text-dark"
+                     data-update-results="{link 'tournament', (string) $tournament->id, 'play', (string) $game->id, 'results'}">
 				{var App\GameModels\Game\Team|null $win = $results->mode->getWin($results)}
                 <h4>{_'Vítěz'}: {ifset $win}<span
                         class="text-team-evo5-{$win->color}">{$win->name}</span>{else}{_'Remíza'}{/ifset}</h4>
@@ -106,6 +107,38 @@
                 <button data-action="{link 'tournament', (string) $tournament->id, 'play', (string) $game->id, 'bonus'}"
                         type="button"
                         class="btn btn-success mt-3" id="updateBonus">{_'Odeslat'}</button>
+
+                <div class="mt-4">
+                    <h5>{_'Turnajové výsledky', domain: 'tournament'}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                            <tr>
+                                <th class="text-start">{_'Tým', domain: 'tournament'}</th>
+                                <th>{_'Skóre', domain: 'tournament'}</th>
+                                <th>{_'Body', domain: 'tournament'}</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr n:foreach="$game->teams as $gameTeam">
+                                {varType LAC\Modules\Tournament\Models\GameTeam $gameTeam}
+                                <td class="text-start">{$gameTeam->name}</td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm tournament-result-score"
+                                           value="{$gameTeam->score}" data-team="{$gameTeam->id}">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm tournament-result-points"
+                                           value="{$gameTeam->points}" data-team="{$gameTeam->id}">
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" id="updateTournamentResults">
+                        {_'Uložit turnajové výsledky', domain: 'tournament'}
+                    </button>
+                </div>
             </section>
 		{/if}
 
