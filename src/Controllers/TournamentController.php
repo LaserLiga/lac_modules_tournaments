@@ -98,6 +98,7 @@ class TournamentController extends Controller
         $this->params['tournament'] = $tournament;
         $this->params['groups'] = $tournament->groups;
         $this->params['teams'] = $tournament->teams;
+        $this->params['rozlosValues'] = $this->getSavedRozlosValues($tournament);
         $this->params['games'] = $tournament->getGames();
         $this->params['addGameStart'] = $this->getDefaultNewGameStart($tournament);
         $this->params['mermaidBracket'] = $this->tournamentProvider->buildMermaidBracket($tournament);
@@ -352,6 +353,8 @@ class TournamentController extends Controller
 
     public function rozlosProcess(Tournament $tournament, Request $request): ResponseInterface
     {
+        $this->saveRozlosValues($tournament, $request);
+
         $teams = $this->getActiveTournamentTeams($tournament, $request);
         if (count($teams) < $tournament->teamsInGame) {
             $request->addPassError(
@@ -604,6 +607,56 @@ class TournamentController extends Controller
         }
 
         return $this->app->redirect(['tournament', (string)$tournament->id, 'rozlos'], $request);
+    }
+
+    /**
+     * @return array{
+     *     'tournament-type'?:string,
+     *     'game-repeat'?:int,
+     *     'game-length'?:int,
+     *     'game-pause'?:int,
+     *     'tournament-start'?:int,
+     *     args?:array{base_game_count?:int,max_barrage_rounds?:int},
+     *     teams_active?:int[]
+     * }
+     */
+    private function getSavedRozlosValues(Tournament $tournament): array
+    {
+        $values = $this->session->get($this->getRozlosValuesSessionKey($tournament), []);
+        return is_array($values) ? $values : [];
+    }
+
+    private function saveRozlosValues(Tournament $tournament, Request $request): void
+    {
+        $args = $request->getPost('args', []);
+        $activeTeamIds = $request->getPost('teams_active', []);
+        if (!is_array($args)) {
+            $args = [];
+        }
+        if (!is_array($activeTeamIds)) {
+            $activeTeamIds = [$activeTeamIds];
+        }
+
+        $this->session->set(
+            $this->getRozlosValuesSessionKey($tournament),
+            [
+                'tournament-type' => (string)$request->getPost('tournament-type', ''),
+                'game-repeat' => (int)$request->getPost('game-repeat', 1),
+                'game-length' => (int)$request->getPost('game-length', 15),
+                'game-pause' => (int)$request->getPost('game-pause', 5),
+                'tournament-start' => (int)$request->getPost('tournament-start', 30),
+                'args' => [
+                    'base_game_count' => (int)($args['base_game_count'] ?? 3),
+                    'max_barrage_rounds' => (int)($args['max_barrage_rounds'] ?? 4),
+                ],
+                'teams_active' => array_map('intval', $activeTeamIds),
+            ]
+        );
+    }
+
+    private function getRozlosValuesSessionKey(Tournament $tournament): string
+    {
+        return 'tournament/' . $tournament->id . '/rozlos-values';
     }
 
     public function rozlosClear(Tournament $tournament, Request $request): ResponseInterface

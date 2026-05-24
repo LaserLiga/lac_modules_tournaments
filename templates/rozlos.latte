@@ -8,7 +8,7 @@
 {varType string $mermaidBracket}
 {varType string[] $bracketLegend}
 {varType array $progressionControls}
-{varType array $_POST}
+{varType array $rozlosValues}
 
 {block content}
     <p>
@@ -28,6 +28,9 @@
 {/block}
 
 {define clearTournament}
+    {var string|null $savedTournamentType = $rozlosValues['tournament-type'] ?? null}
+    {var array $savedArgs = $rozlosValues['args'] ?? []}
+    {var array|null $savedActiveTeams = $rozlosValues['teams_active'] ?? null}
     <form action="{link 'tournament', (string) $tournament->id, 'rozlos'}" method="post" id="rozlos-form"
           data-teams="{count($teams)}" data-teams-in-game="{$tournament->teamsInGame}" data-ajax-rozlos>
         <div class="form-group my-2">
@@ -35,7 +38,7 @@
             <select name="tournament-type" id="tournament-type" class="form-select">
                 {foreach LAC\Modules\Tournament\Models\TournamentPresetType::cases() as $case}
                     {continueIf !in_array($tournament->teamsInGame, $case->getInGameCompatibility(), true)}
-                    <option {if isset($_POST['tournament-type']) && $_POST['tournament-type'] === $case->value}selected{/if}
+                    <option {if $savedTournamentType === $case->value}selected{/if}
                             value="{$case->value}">
                         {$case->getReadableValue()}
                     </option>
@@ -48,35 +51,35 @@
                 {_'Počet vzájemných her', domain: 'tournament'}
             </label>
             <input type="number" name="game-repeat" class="form-control" id="game-repeat" min="1"
-                   value="{$_POST['game-repeat'] ?? 1}">
+                   value="{$rozlosValues['game-repeat'] ?? 1}">
         </div>
         <div class="form-group my-2">
             <label for="game-length" class="form-label">
                 {_'Délka hry', domain: 'tournament'} ({_'v minutách', domain: 'tournament', context: 'game_length'})
             </label>
             <input type="number" name="game-length" class="form-control" id="game-length"
-                   value="{$_POST['game-length'] ?? 15}">
+                   value="{$rozlosValues['game-length'] ?? 15}">
         </div>
         <div class="form-group my-2">
             <label for="game-pause" class="form-label">
                 {_'Přestávka mezi hrami', domain: 'tournament'} ({_'v minutách', domain: 'tournament', context: 'game_length'})
             </label>
             <input type="number" name="game-pause" class="form-control" id="game-pause"
-                   value="{$_POST['game-pause'] ?? 5}">
+                   value="{$rozlosValues['game-pause'] ?? 5}">
         </div>
         <div class="form-group my-2">
             <label for="tournament-start" class="form-label">
                 {_'Čas na začátku turnaje', domain: 'tournament'} ({_'v minutách', domain: 'tournament', context: 'game_length'})
             </label>
             <input type="number" name="tournament-start" class="form-control" id="tournament-start"
-                   value="{$_POST['tournament-start'] ?? 30}">
+                   value="{$rozlosValues['tournament-start'] ?? 30}">
         </div>
 
         <div class="barrage-args" style="display: none;">
             <div class="form-group my-2">
                 <label for="barrage-base-games" class="form-label">{_'Počet her na tým v základní skupině', domain: 'tournament'}</label>
                 <input type="number" name="args[base_game_count]" class="form-control" id="barrage-base-games"
-                       min="1" step="1" required value="{$_POST['args']['base_game_count'] ?? 3}">
+                       min="1" step="1" required value="{$savedArgs['base_game_count'] ?? 3}">
                 <div class="form-text" id="barrage-base-games-help">
                     {_'Počet týmů ve skupině krát počet her na tým musí být dělitelný počtem týmů ve hře.', domain: 'tournament'}
                 </div>
@@ -85,7 +88,7 @@
             <div class="form-group my-2">
                 <label for="barrage-rounds" class="form-label">{_'Maximální počet kol baráže', domain: 'tournament'}</label>
                 <input type="number" name="args[max_barrage_rounds]" class="form-control" id="barrage-rounds"
-                       value="{$_POST['args']['max_barrage_rounds'] ?? 4}">
+                       value="{$savedArgs['max_barrage_rounds'] ?? 4}">
             </div>
         </div>
 
@@ -101,7 +104,8 @@
                     <input type="checkbox" class="btn-check tournament-team-toggle"
                            name="teams_active[]" value="{$team->id}"
                            id="tournament-team-active-{$team->id}"
-                           autocomplete="off" checked>
+                           autocomplete="off"
+                            n:attr="checked: $savedActiveTeams === null || in_array($team->id, $savedActiveTeams, true)">
                     <label class="btn btn-outline-secondary"
                            for="tournament-team-active-{$team->id}">
                         {$team->name}
